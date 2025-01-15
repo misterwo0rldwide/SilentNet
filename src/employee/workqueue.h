@@ -4,6 +4,8 @@
  *
  * 	Omer Kfir (C)
  */
+#ifndef WORKQUEUE_H
+#define WORKQUEUE_H
 
 #include "headers.h"
 
@@ -19,3 +21,7 @@ typedef struct wq_msg
         char msg_buf[BUFFER_SIZE];
         size_t length;
 }wq_msg;
+
+
+/* WORKQUEUE_H */
+#endif
