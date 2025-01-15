@@ -8,6 +8,8 @@
 import socket
 from typing import Optional, Tuple, Union
 
+__author__ = "Omer Kfir"
+
 DEBUG_PRINT_LEN = 50
 DEBUG_FLAG = False
 

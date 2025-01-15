@@ -10,6 +10,8 @@ import sys, threading
 sys.path.append("..")
 import protocol
 
+__author__ = "Omer Kfir"
+
 # Project currently running
 proj_run = True
 
