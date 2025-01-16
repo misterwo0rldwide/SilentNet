@@ -31,5 +31,21 @@ class DB:
         self.close_DB()
 
     def close_DB(self):
+        """
+            Closes connection to DB
+
+            INPUT: None
+            OUTPUT: None
+        """
+        
         self.conn.close()
     
+    def commit(self):
+        """
+            Commits a command to DB
+
+            INPUT: None
+            OUTPUT: None
+        """
+        
+        self.conn.commit()
