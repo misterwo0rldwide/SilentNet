@@ -27,12 +27,12 @@ static struct kprobe kps[PROBES_SIZE] = {
     [kp_do_exit] = 
     {
         .pre_handler = handler_pre_do_exit,
-        .symbol_name = HOOK_PROCESS_EXIT
+        	.symbol_name = HOOK_PROCESS_EXIT
     },
     [kp_input_event] = 
     {
     	.pre_handler = handler_pre_input_event,
-	.symbol_name = HOOK_INPUT_EVENT
+		.symbol_name = HOOK_INPUT_EVENT
     }
 };
 

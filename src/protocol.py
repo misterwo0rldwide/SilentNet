@@ -19,6 +19,7 @@ class MessageParser:
     # Message types
     MSG_PROCESS_OPEN = "MPO"
     MSG_PROCESS_CLOSE = "MPC"
+    MSG_INPUT_EVENT = "MIE"
     
     """
         Decorator staticmethod does not block a function to be called through an instance
@@ -88,7 +89,17 @@ class TCPsocket:
         
         else:
             self.__sock = sock
-            
+    
+
+    def __del__(self):
+        """
+            Close TCP socket
+
+            INPUT: None
+            OUTPUT: None
+        """
+
+        self.close()
     
     def create_server_socket(self, bind_ip : str, bind_port : int, server_listen : int) -> None:
         """
