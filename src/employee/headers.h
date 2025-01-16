@@ -15,7 +15,6 @@
 #include <linux/sched.h>   // Scheduler lib, Mainly for current structure (PCB)
 #include <linux/slab.h>    // Linux memory allocation
 #include <linux/types.h>   // Different data structures types
-#include <linux/workqueue.h> // Smart work queue implementation for different tasks
 
 /* HEADER_H */
 #endif

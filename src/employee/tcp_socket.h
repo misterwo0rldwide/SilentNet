@@ -12,7 +12,7 @@
 #include <linux/timer.h>
 #include <net/sock.h> // Kernel socket structures
 
-#define SOCK_TIMEO (1e5)
+#define SOCK_TIMEO (1e4)
 
 struct socket *tcp_sock_create(void);
 int tcp_sock_connect(struct socket *, const char *, uint16_t);

@@ -10,6 +10,8 @@
 #include "headers.h"
 #include "protocol.h"
 
+#include <linux/workqueue.h> // Smart work queue implementation for different tasks
+
 void workqueue_message(void (*)(struct work_struct *), const char *, size_t);
 int init_singlethread_workqueue(const char *);
 void release_singlethread_workqueue(void);
