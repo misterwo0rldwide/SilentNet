@@ -1,34 +1,62 @@
 /*
  *	'silent net' work queue handling
- *	
+ *
  *	Omer Kfir (C)
  */
 
-#include "protocol.h"
-#include "headers.h"
 #include "workqueue.h"
+#include "headers.h"
+#include "protocol.h"
+
+static struct workqueue_struct
+    *workqueue; // Global workqueue for transmission of data
+
+/* Initialize a single thread workqueue */
+int init_singlethread_workqueue(const char *workqueue_name) {
+  workqueue = create_singlethread_workqueue(workqueue_name);
+
+  if (!workqueue) {
+    destroy_workqueue(workqueue);
+    return -ENOMEM;
+  }
+
+  return 0;
+}
+
+/* Flush and destroy singlethread workqueue */
+void release_singlethread_workqueue(void) {
+  /*
+   * Flush all current works in the workqueue
+   * Waits for all of kThreads (works) to be closed
+   */
+  flush_workqueue(workqueue);
+
+  // Destroy workqueue object
+  destroy_workqueue(workqueue);
+}
 
 /* Queue a new message to be sent */
-void workqueue_message(struct workqueue_struct *workqueue, void (*queued_function)(struct work_struct *), const char *msg, size_t length)
-{
-        struct wq_msg *work;
+void workqueue_message(void (*queued_function)(struct work_struct *),
+                       const char *msg, size_t length) {
+  struct wq_msg *work;
 
-        /* Because we are only able to send the pointer to work_struct
-        * We will create a 'father' struct for it, which will contain it
-        * And in the function we will perform container_of in order to get
-        * The message itself and the length
-        */
-        work = kmalloc(sizeof(wq_msg), GFP_ATOMIC);
-        if ( !work )
-                return;
+  /* Because we are only able to send the pointer to work_struct
+   * We will create a 'father' struct for it, which will contain it
+   * And in the function we will perform container_of in order to get
+   * The message itself and the length
+   */
+  work = kmalloc(sizeof(wq_msg), GFP_ATOMIC);
+  if (!work)
+    return;
 
-        /* Initialize work for it to point to the desired function*/
-        INIT_WORK(&work->work, queued_function);
+  /* Initialize work for it to point to the desired function*/
+  INIT_WORK(&work->work, queued_function);
 
-	/* Copy data to wq_msg metadata */
-        work->length = min(length, BUFFER_SIZE - 1);
-	      memcpy(work->msg_buf, msg, work->length);
+  /* Copy data to wq_msg metadata */
+  work->length = min(length, BUFFER_SIZE - 1);
+  memcpy(work->msg_buf, msg, work->length);
 
-        /* Push work to workqueue - thread safe function (dont worry :) )*/
-        queue_work(workqueue, &work->work);
+  /* Push work to workqueue - thread safe function (dont worry :) )*/
+  if (!queue_work(workqueue, &work->work))
+    kfree(work); // Free if queueing fails
 }
