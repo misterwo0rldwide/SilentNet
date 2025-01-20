@@ -2,12 +2,13 @@
 #   
 #
 #   Omer Kfir (C)
-import sqlite3
+import sqlite3, threading
+from datetime import datetime
 __author__ = "Omer Kfir"
 
 
 class DB:
-    def __init__(self, db_name):
+    def __init__(self, db_name : str, table_name : str):
         """
             Initialize connection to database
 
@@ -17,18 +18,12 @@ class DB:
             @db_name: Name of data base
         """
 
-        self.conn   = sqlite3.connect(db_name)  # Connection to DB 
-        self.cursor = self.conn.cursor()  # DB cursor
-    
-    def __del__(self):
-        """
-            Called when object deleted, closes db
-
-            INPUT: None
-            OUTPUT: None
-        """
+        self.conn       = sqlite3.connect(db_name)  # Connection to DB 
+        self.cursor     = self.conn.cursor()  # DB cursor
+        self.table_name = table_name # Main table name
         
-        self.close_DB()
+        self.lock = threading.Lock() # Lock for race condition
+    
 
     def close_DB(self):
         """
@@ -38,14 +33,42 @@ class DB:
             OUTPUT: None
         """
         
+        self.cursor.close()
         self.conn.close()
     
-    def commit(self):
+    def commit(self, command : str, *command_args) -> None:
         """
             Commits a command to DB
 
-            INPUT: None
+            INPUT: command, *command_args
             OUTPUT: None
+            
+            @command -> String of the command to be executed
+            @command_args -> Arguments of command
         """
         
-        self.conn.commit()
+        with self.lock:
+        
+            try:
+                self.cursor.execute(command, (*command_args))
+                self.conn.commit()
+            
+            except Exception as e:
+                print(f"Commit DB exception {e}")
+    
+    def insert_data(self, ip : str, data_type : str, data : bytes) -> None:
+        """
+            Insert data to sql table
+
+            INPUT: ip, data_type, data
+            OUTPUT: None
+            
+            @ip -> String of ip of a user
+            @data_type -> String of type of data to be inserted
+            @data -> Bytes of data
+        """
+        
+        date = datetime.now().strftime("%H:%M:%S %Y-%m-%d")
+        command = f"INSERT INTO {self.table_name} (ip, data_type, data, date) VALUES (?,?,?,?)"
+        
+        self.commit(command, ip, data_type, data, date)
