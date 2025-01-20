@@ -60,6 +60,8 @@ def remove_disconnected_client(client : protocol.client) -> None:
             if client_object == client:
                 del clients_connected[index]
                 break
+
+    client.close()
                 
 
 def get_clients_hooked_data(client : protocol.client) -> None:
@@ -130,6 +132,8 @@ def main():
 
     server = protocol.server(max_clients)
     get_clients(server, max_clients)
+
+    server.close()
     
 
 if __name__ == "__main__":
