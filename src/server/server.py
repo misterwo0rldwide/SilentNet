@@ -8,7 +8,7 @@
 import sys, threading
 
 sys.path.append("..")
-import protocol
+import protocol, DB
 
 __author__ = "Omer Kfir"
 
@@ -20,9 +20,12 @@ clients_connected = [] # List of (thread object, client object)
 clients_recv_event = threading.Event()
 clients_recv_lock = threading.Lock()
 
-max_clients = 20 # Default number (Can be any other number)
+max_clients = ... # Max amount of clients connected simultaneously to server
 
-def process_client_data(client : protocol.client, data_fields : list[bytes]) -> None:
+# Data base object
+data_base = ...
+
+def process_client_data(client : protocol.client, log_type : str, log_params : bytes) -> None:
     """
         Processes client's sent data
         
@@ -33,8 +36,7 @@ def process_client_data(client : protocol.client, data_fields : list[bytes]) -> 
         @data -> List of fields of message sent by client
     """
     
-    # For now we don't have any thing to process so just print
-    print(client.get_address()[0], *data_fields)
+    data_base.insert_data(client.get_address()[0], log_type, log_params)
 
 
 def remove_disconnected_client(client : protocol.client) -> None:
@@ -76,13 +78,18 @@ def get_clients_hooked_data(client : protocol.client) -> None:
     global clients_connected
     
     while proj_run:
-        data = client.protocol_recv()
+
+        # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
+        data = client.protocol_recv(protocol.MessageParser.PROTOCOL_DATA_INDEX)
         
         # Ensure client is connected
         if data == b'':
             break
     
-        process_client_data(client, data)
+        log_type, log_params = data
+        log_type = log_type.decode()
+
+        process_client_data(client, log_type, log_params)
     
     remove_disconnected_client(client)
     
@@ -107,33 +114,48 @@ def get_clients(server : protocol.server, max_clients : int) -> None:
     # Main loop for receiving clients
     while proj_run:
     
-        # If did not receive maximum amount of clients
-        if len(clients_connected) < max_clients:
-            client = server.recv_client()
-            clients_thread = threading.Thread(target=get_clients_hooked_data, args=(client,))
-            
-            # Append client thread to list
-            with clients_recv_lock:
-                clients_connected.append((clients_thread, client))
-            
-            clients_thread.start()
-            
-            # If reached maximum amount of clients set the lock
-            if len(clients_connected) >= max_clients:
-                clients_recv_event.clear()
-            
-        else:
-            
-            # Efficienlty waiting for receiving clients again
-            clients_recv_event.wait()
+        try:
+
+            # If did not receive maximum amount of clients
+            if len(clients_connected) < max_clients:
+                client = server.recv_client()
+                clients_thread = threading.Thread(target=get_clients_hooked_data, args=(client,))
+                
+                # Append client thread to list
+                with clients_recv_lock:
+                    clients_connected.append((clients_thread, client))
+                
+                clients_thread.start()
+                
+                # If reached maximum amount of clients set the lock
+                if len(clients_connected) >= max_clients:
+                    clients_recv_event.clear()
+                
+            else:
+                
+                # Efficienlty waiting for receiving clients again
+                clients_recv_event.wait()
+        
+        except Exception as e:
+            print(f"Error accepting client: {e}")
 
 def main():
-    global max_clients
+    global max_clients, data_base
+
+    data_base = DB.UserLogsORM(DB.UserLogsORM.DB_NAME, DB.UserLogsORM.USER_LOGS_NAME)
+    max_clients = 5
 
     server = protocol.server(max_clients)
     get_clients(server, max_clients)
 
     server.close()
+
+    data_base.delete_records_DB()
+    data_base.close_DB()
+
+    for client_thread, client_sock in clients_connected:
+        client_sock.close()
+        client_thread.join()
     
 
 if __name__ == "__main__":

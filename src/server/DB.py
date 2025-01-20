@@ -4,26 +4,54 @@
 #   Omer Kfir (C)
 import sqlite3, threading
 from datetime import datetime
+
 __author__ = "Omer Kfir"
 
+class UserLogsORM:
 
-class DB:
-    def __init__(self, db_name : str, table_name : str):
+    DB_NAME = "client_logs.db"
+    USER_LOGS_NAME = "logs"
+
+    _lock = threading.Lock() # Lock for race condition
+    _instance = None
+
+    def __new__(cls, db_name : str, table_name : str):
         """
-            Initialize connection to database
+            Called before __init__ to ensure db is singleton object
 
             INPUT: db_name
             OUTPUT: None
 
-            @db_name: Name of data base
+            @db_name -> Name of data base
+            @table_name -> Name of table inside db
         """
 
-        self.conn       = sqlite3.connect(db_name)  # Connection to DB 
-        self.cursor     = self.conn.cursor()  # DB cursor
-        self.table_name = table_name # Main table name
-        
-        self.lock = threading.Lock() # Lock for race condition
-    
+        with cls._lock:
+
+            # Check if initialized before in order to not create duplicates
+            if cls._instance is None:
+                cls._instance = super(UserLogsORM, cls).__new__(cls)
+                cls._instance.__init__(db_name, table_name)
+            
+            return cls._instance
+
+
+    def __init__(self, db_name : str, table_name : str):
+        """
+            Initialize connection to database
+
+            INPUT: db_name, table_name
+            OUTPUT: None
+
+            @db_name -> Name of data base
+            @table_name -> Name of table inside db
+        """
+
+        # Ensure not to get called twice after __new__
+        if not hasattr(self, 'conn'):
+            self.conn       = sqlite3.connect(db_name, check_same_thread=False)  # Connection to DB 
+            self.cursor     = self.conn.cursor()  # DB cursor
+            self.table_name = table_name # Main table name
 
     def close_DB(self):
         """
@@ -36,6 +64,17 @@ class DB:
         self.cursor.close()
         self.conn.close()
     
+    def delete_records_DB(self):
+        """
+            Deletes all logs from data base
+
+            INPUT: None
+            OUTPUT: None
+        """
+
+        command = f"DELETE FROM {self.table_name}"
+        self.commit(command)
+    
     def commit(self, command : str, *command_args) -> None:
         """
             Commits a command to DB
@@ -47,13 +86,14 @@ class DB:
             @command_args -> Arguments of command
         """
         
-        with self.lock:
+        with self._lock:
         
             try:
-                self.cursor.execute(command, (*command_args))
+                self.cursor.execute(command, command_args)
                 self.conn.commit()
             
             except Exception as e:
+                self.conn.rollback() # Rollback to previous state to not change DB
                 print(f"Commit DB exception {e}")
     
     def insert_data(self, ip : str, data_type : str, data : bytes) -> None:
@@ -69,6 +109,6 @@ class DB:
         """
         
         date = datetime.now().strftime("%H:%M:%S %Y-%m-%d")
-        command = f"INSERT INTO {self.table_name} (ip, data_type, data, date) VALUES (?,?,?,?)"
+        command = f"INSERT INTO {self.table_name} (ip, type, data, date) VALUES (?,?,?,?);"
         
         self.commit(command, ip, data_type, data, date)

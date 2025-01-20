@@ -15,6 +15,7 @@ DEBUG_FLAG = False
 
 class MessageParser:
     PROTOCOL_SEPARATOR = b"\x1f"
+    PROTOCOL_DATA_INDEX = 1
 
     # Message types
     MSG_PROCESS_OPEN = "MPO"
@@ -55,18 +56,19 @@ class MessageParser:
         return msg_buf
         
     @staticmethod
-    def protocol_message_deconstruct(msg : bytes) -> list[bytes]:
+    def protocol_message_deconstruct(msg : bytes, part_split : int) -> list[bytes]:
         """
             Constructs a message to be sent by protocol rules
             
-            INPUT: msg
+            INPUT: msg, part_split
             OUTPUT: List of fields in msg seperated by protocol
             
             @msg -> Byte stream
+            @part_split -> Number of fields to seperate from start of message
         """
         
         if msg != b'':
-            msg = msg.split(MessageParser.PROTOCOL_SEPARATOR)
+            msg = msg.split(MessageParser.PROTOCOL_SEPARATOR, part_split)
         
         return msg
         
@@ -298,15 +300,17 @@ class client (TCPsocket):
             self.log("Error", "Failed to connect to server")
             self.close()
     
-    def protocol_recv(self) -> list[bytes]:
+    def protocol_recv(self, part_split : int = -1) -> list[bytes]:
         """
             Recevies data from connected side and splits it by protocol
             
-            INPUT: None
+            INPUT: part_split
             OUTPUT: List of byte streams
+
+            @part_split -> Number of fields to seperate from start of message
         """
         
-        data = MessageParser.protocol_message_deconstruct(self.recv())
+        data = MessageParser.protocol_message_deconstruct(self.recv(), part_split)
         return data
         
     def protocol_send(self, msg_type, *args) -> None:
