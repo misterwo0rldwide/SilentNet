@@ -90,17 +90,6 @@ class TCPsocket:
         else:
             self.__sock = sock
     
-
-    def __del__(self):
-        """
-            Close TCP socket
-
-            INPUT: None
-            OUTPUT: None
-        """
-
-        self.close()
-    
     def create_server_socket(self, bind_ip : str, bind_port : int, server_listen : int) -> None:
         """
             Prepare a server tcp socket
