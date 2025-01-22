@@ -8,7 +8,8 @@
 import sys, threading
 
 sys.path.append("..")
-import protocol, DB
+from protocol import *
+from DB import *
 
 __author__ = "Omer Kfir"
 
@@ -25,7 +26,7 @@ max_clients = ... # Max amount of clients connected simultaneously to server
 # Data base object
 data_base = ...
 
-def process_client_data(client : protocol.client, log_type : str, log_params : bytes) -> None:
+def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
     """
         Processes client's sent data
         
@@ -39,7 +40,7 @@ def process_client_data(client : protocol.client, log_type : str, log_params : b
     data_base.insert_data(client.get_address()[0], log_type, log_params)
 
 
-def remove_disconnected_client(client : protocol.client) -> None:
+def remove_disconnected_client(client : client) -> None:
     """
         Removes a client from global list of clients that are connected
         
@@ -66,7 +67,7 @@ def remove_disconnected_client(client : protocol.client) -> None:
     client.close()
                 
 
-def get_clients_hooked_data(client : protocol.client) -> None:
+def get_clients_hooked_data(client : client) -> None:
     """
         Gets connected client data from hooked functions
         
@@ -80,7 +81,7 @@ def get_clients_hooked_data(client : protocol.client) -> None:
     while proj_run:
 
         # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
-        data = client.protocol_recv(protocol.MessageParser.PROTOCOL_DATA_INDEX)
+        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
         
         # Ensure client is connected
         if data == b'':
@@ -99,7 +100,7 @@ def get_clients_hooked_data(client : protocol.client) -> None:
     if len(clients_connected) + 1 == max_clients:
         clients_recv_event.set()
 
-def get_clients(server : protocol.server, max_clients : int) -> None:
+def get_clients(server : server, max_clients : int) -> None:
     """
         Connect clients to server
         
@@ -142,10 +143,10 @@ def get_clients(server : protocol.server, max_clients : int) -> None:
 def main():
     global max_clients, data_base
 
-    data_base = DB.UserLogsORM(DB.UserLogsORM.DB_NAME, DB.UserLogsORM.USER_LOGS_NAME)
+    data_base = UserLogsORM(UserLogsORM.DB_NAME, UserLogsORM.USER_LOGS_NAME)
     max_clients = 5
 
-    server = protocol.server(max_clients)
+    server = server(max_clients)
     get_clients(server, max_clients)
 
     server.close()

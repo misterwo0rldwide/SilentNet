@@ -5,20 +5,20 @@
 #   Through requests to server which holds the data
 #
 #   Omer Kfir (C)
-import sys
+import sys, webbrowser
+from flask import *
 
 sys.path.append("..")
-import protocol
+from protocol import *
 
 __author__ = "Omer Kfir"
 
-def main():
-    
-    client = protocol.client()
-    client.connect(protocol.server.SERVER_BIND_IP, protocol.server.SERVER_BIND_PORT)
 
+web_app = Flask(__name__)
+
+def main():
+    pass
     
-    client.close()
 
 if __name__ == "__main__":
     main()

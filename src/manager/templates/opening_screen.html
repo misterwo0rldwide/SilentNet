@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silenet</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('../Images/Silent_net.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 75vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            font-family: Arial, sans-serif;
+            color: black;
+        }
+
+        #top_message {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            margin-left: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div id="top_message">
+        <p>Press any key<br>&nbspTo continue...</p>
+    </div>
+
+    <script>
+        function goToNextPage() {
+            window.location.href = 'youtube.com';
+        }
+
+        // Listen for keydown event (key press)
+        document.addEventListener('keydown', goToNextPage);
+
+        // Listen for click event (mouse press)
+        document.addEventListener('click', goToNextPage);
+    </script>
+</body>
+</html>
