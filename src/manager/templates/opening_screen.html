@@ -3,38 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Silenet</title>
+    <title>Silent Net</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-image: url('../Images/Silent_net.png');
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 75vh;
+            background-color: #ffffff;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
-            align-items: flex-end;
+            align-items: center;
             font-family: Arial, sans-serif;
             color: black;
+            box-shadow: none;
+            outline: none;
         }
 
-        #top_message {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            margin-left: 50px;
+        .logo {
+            width: 400px;
+            height: 400px;
+            margin-right: 20px;
+            margin-bottom: 40px;
+        }
+
+        .message {
+            font-size: 1.8rem;
+            text-align: center;
+            color: #444444;
+            background: #f9f9f9;
+            border: 2px solid #dddddd;
+            border-radius: 15px;
+            padding: 20px 40px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .message:hover {
+            color: #222222;
+            background: #eeeeee;
+            border-color: #cccccc;
+            box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease-in-out;
         }
     </style>
 </head>
 <body>
-    <div id="top_message">
-        <p>Press any key<br>&nbspTo continue...</p>
+    <!-- Logo -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Silent Net Logo" class="logo">
+
+    <!-- Stylish Message -->
+    <div class="message">
+        Press any key<br>&nbspTo continue...
     </div>
 
     <script>
         function goToNextPage() {
-            window.location.href = 'youtube.com';
+            window.location.href = 'settings'; // Adjust the path as needed
         }
 
         // Listen for keydown event (key press)

@@ -246,7 +246,21 @@ class TCPsocket:
         # Send data and log it
         self.__sock.sendall(data)
         self.log("Sent", data)
-    
+
+    @staticmethod
+    def get_free_port() -> int:
+        """
+            Get free internet port for binding
+
+            INPUT: None
+            OUTPUT: None
+        """
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))  # Binding to port 0 gives random port
+            port = s.getsockname()[1]
+        
+        return port
     
 
 class client (TCPsocket):
