@@ -35,10 +35,12 @@ def submit_settings():
     print(employees_amount, safety)
     return redirect(url_for("employees_screen"))
 
-# Main screen
+# Main screen - Gets current connected clients
+#               And updates screen through them
 @web_app.route("/employees")
 def employees_screen():
-    return "<h1>Settings submitted successfully!</h1>"
+    connected_clients = ...
+    return render_template("ip_screen.html", ip_list=connected_clients)
 
 
 def main():
