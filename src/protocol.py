@@ -91,6 +91,8 @@ class TCPsocket:
         
         else:
             self.__sock = sock
+        
+        self.__sock.settimeout(0.5)
     
     def create_server_socket(self, bind_ip : str, bind_port : int, server_listen : int) -> None:
         """
@@ -296,12 +298,12 @@ class client (TCPsocket):
         
         return self.__addr
     
-    def connect(self, dst_ip : str, dst_port : int) -> None:
+    def connect(self, dst_ip : str, dst_port : int) -> bool:
         """
             Connect client to server
             
             INPUT: dst_ip, dst_port
-            OUTPUT: None
+            OUTPUT: Boolean value which indicated wether managed to connect
             
             @dst_ip -> Destination IP of server
             @dst_port -> Destination Port of server
@@ -309,10 +311,13 @@ class client (TCPsocket):
         
         try:
             self.client_socket_connect_server(dst_ip, dst_port)
+            return True
         
         except (ConnectionRefusedError, socket.timeout):
             self.log("Error", "Failed to connect to server")
             self.close()
+
+            return False
     
     def protocol_recv(self, part_split : int = -1) -> list[bytes]:
         """
