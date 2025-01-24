@@ -26,18 +26,18 @@ max_clients = ... # Max amount of clients connected simultaneously to server
 # Data base object
 data_base = ...
 
-def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
-    """
-        Processes client's sent data
+#def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
+#    """
+#        Processes client's sent data
         
-        INPUT: client, data
-        OUTPUT: None
+#        INPUT: client, data
+#        OUTPUT: None
         
-        @client -> Protocol client object
-        @data -> List of fields of message sent by client
-    """
+#        @client -> Protocol client object
+#        @data -> List of fields of message sent by client
+#    """
     
-    data_base.insert_data(client.get_address()[0], log_type, log_params)
+#    data_base.insert_data(client.get_address()[0], log_type, log_params)
 
 
 def remove_disconnected_client(client : client) -> None:

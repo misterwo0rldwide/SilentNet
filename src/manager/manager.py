@@ -39,8 +39,8 @@ def submit_settings():
 #               And updates screen through them
 @web_app.route("/employees")
 def employees_screen():
-    connected_clients = ...
-    return render_template("ip_screen.html", ip_list=connected_clients)
+    connected_clients = ["00:14:22:01:23:45", "01:23:45:67:89:ab", "a1:b2:c3:d4:e5:f6", "f0:da:00:11:22:33", "3c:ff:ef:45:67:89", "bc:de:12:34:56:78", "00:0a:95:9d:68:16", "ab:cd:ef:01:23:45", "00:1a:2b:3c:4d:5e", "10:20:30:40:50:60"]
+    return render_template("mac_screen.html", mac_list=connected_clients)
 
 
 def main():

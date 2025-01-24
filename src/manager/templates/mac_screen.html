@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP List</title>
+    <title>MAC List</title>
     <style>
     body {
         font-family: Arial, sans-serif;
@@ -88,10 +88,10 @@
     
     <!-- Print all ip list -->
     <div class="container">
-        {% for ip in ip_list %}
+        {% for mac in mac_list %}
         <form action="/next_page" method="get" style="margin-left: 90px;">
-            <input type="hidden" name="ip" value="{{ ip }}">
-            <button class="button" type="submit">{{ ip }}</button>
+            <input type="hidden" name="ip" value="{{ mac }}">
+            <button class="button" type="submit">{{ mac }}</button>
         </form>
         {% endfor %}
     </div>

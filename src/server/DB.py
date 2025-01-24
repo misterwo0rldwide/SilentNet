@@ -7,108 +7,144 @@ from datetime import datetime
 
 __author__ = "Omer Kfir"
 
-class UserLogsORM:
 
-    DB_NAME = "client_logs.db"
-    USER_LOGS_NAME = "logs"
-
-    _lock = threading.Lock() # Lock for race condition
-    _instance = None
-
-    def __new__(cls, db_name : str, table_name : str):
+class DBHandler():
+    """
+        Base class for database handling
+    """
+    
+    def __init__(self, db_name: str, table_name: str):
         """
-            Called before __init__ to ensure db is singleton object
-
-            INPUT: db_name
-            OUTPUT: None
-
-            @db_name -> Name of data base
-            @table_name -> Name of table inside db
-        """
-
-        with cls._lock:
-
-            # Check if initialized before in order to not create duplicates
-            if cls._instance is None:
-                cls._instance = super(UserLogsORM, cls).__new__(cls)
-                cls._instance.__init__(db_name, table_name)
-            
-            return cls._instance
-
-
-    def __init__(self, db_name : str, table_name : str):
-        """
-            Initialize connection to database
-
+            Initialize database connection
+        
             INPUT: db_name, table_name
             OUTPUT: None
 
-            @db_name -> Name of data base
-            @table_name -> Name of table inside db
+            @db_name: Name of the database
+            @table_name: Name of the primary table
         """
 
-        # Ensure not to get called twice after __new__
-        if not hasattr(self, 'conn'):
-            self.conn       = sqlite3.connect(db_name, check_same_thread=False)  # Connection to DB 
-            self.cursor     = self.conn.cursor()  # DB cursor
-            self.table_name = table_name # Main table name
+        self.conn = sqlite3.connect(db_name, check_same_thread=False)
+        self.cursor = self.conn.cursor()
+        self.table_name = table_name
 
+        self._lock = threading.Lock()
+    
     def close_DB(self):
         """
-            Closes connection to DB
+            Closes connection to database
 
             INPUT: None
             OUTPUT: None
         """
-        
         self.cursor.close()
         self.conn.close()
     
     def delete_records_DB(self):
         """
-            Deletes all logs from data base
+            Deletes all records from the table
 
             INPUT: None
             OUTPUT: None
         """
-
         command = f"DELETE FROM {self.table_name}"
         self.commit(command)
     
-    def commit(self, command : str, *command_args) -> None:
+    def commit(self, command: str, *command_args) -> None:
         """
-            Commits a command to DB
+            Commits a command to database
 
-            INPUT: command, *command_args
+            INPUT: command, command_args
             OUTPUT: None
-            
-            @command -> String of the command to be executed
-            @command_args -> Arguments of command
+        
+            @command: SQL command to execute
+            @command_args: Arguments for the command
         """
-        
+
         with self._lock:
-        
             try:
                 self.cursor.execute(command, command_args)
                 self.conn.commit()
-            
             except Exception as e:
-                self.conn.rollback() # Rollback to previous state to not change DB
+                self.conn.rollback()
                 print(f"Commit DB exception {e}")
-    
-    def insert_data(self, ip : str, data_type : str, data : bytes) -> None:
-        """
-            Insert data to sql table
 
-            INPUT: ip, data_type, data
+
+class UserLogsORM (DBHandler):
+    """
+        Singleton implementation of UserLogsORM inheriting from DBHandler
+    """
+
+    DB_NAME = "client_logs.db"
+    USER_LOGS_NAME = "logs"
+    
+    _lock = threading.Lock()
+    _instance = None
+    
+    def __new__(cls, db_name: str, table_name: str):
+        """
+            Ensure singleton instance
+
+            INPUT: None
             OUTPUT: None
-            
-            @ip -> String of ip of a user
-            @data_type -> String of type of data to be inserted
-            @data -> Bytes of data
         """
         
-        date = datetime.now().strftime("%H:%M:%S %Y-%m-%d")
-        command = f"INSERT INTO {self.table_name} (ip, type, data, date) VALUES (?,?,?,?);"
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(UserLogsORM, cls).__new__(cls)
+                cls._instance.__init__(db_name, table_name)
+            return cls._instance
+    
+    def insert_data(self, mac: str, data_type: str, data: bytes) -> None:
+        """
+            Insert data to SQL table
         
-        self.commit(command, ip, data_type, data, date)
+
+            INPUT: mac, data_type, data
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+            @data_type: Type of data to be inserted
+            @data: Bytes of data
+        """
+
+        date = datetime.now().strftime("%H:%M:%S %Y-%m-%d")
+        command = f"INSERT INTO {self.table_name} (mac, type, data, date) VALUES (?,?,?,?);"
+        self.commit(command, mac, data_type, data, date)
+
+class UserId (DBHandler):
+
+    DB_NAME = "client_logs.db"
+    USER_ID_NAME = "uid"
+
+    _lock = threading.Lock()
+    _instance = None
+    
+    def __new__(cls, db_name: str, table_name: str):
+        """
+            Ensure singleton instance
+
+            INPUT: None
+            OUTPUT: None
+        """
+        
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(UserLogsORM, cls).__new__(cls)
+                cls._instance.__init__(db_name, table_name)
+            return cls._instance
+    
+    def insert_data(self, mac: str, hostname : str) -> None:
+        """
+            Insert data to SQL table
+        
+
+            INPUT: mac, hostname
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+            @hostname: User's computer hostname
+        """
+
+        command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?,?);"
+        self.commit(command, mac, hostname)
