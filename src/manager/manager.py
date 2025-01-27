@@ -8,7 +8,8 @@
 import sys, webbrowser, os, signal
 from flask import *
 
-sys.path.append("..")
+# Append parent directory to be able to append protocol
+sys.path.append(sys.argv[0][:sys.argv[0].index("\\manager")])
 from protocol import *
 
 __author__ = "Omer Kfir"
@@ -77,7 +78,7 @@ def exit_proj():
     os.kill(os.getpid(), signal.SIGINT)
 
 def main():
-
+    
     direct = ""
     connected = attemp_server_connection()
     if not connected:
@@ -88,7 +89,6 @@ def main():
 
 
     web_app.run(port=port)
-    
 
 if __name__ == "__main__":
     main()
