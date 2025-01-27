@@ -137,7 +137,6 @@ class UserId (DBHandler):
     def insert_data(self, mac: str, hostname : str) -> None:
         """
             Insert data to SQL table
-        
 
             INPUT: mac, hostname
             OUTPUT: None
@@ -148,3 +147,17 @@ class UserId (DBHandler):
 
         command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?,?);"
         self.commit(command, mac, hostname)
+    
+    def update_name(self, mac: str, name : str) -> None:
+        """
+            Manager changes a name for a client
+            
+            INPUT: mac, name
+            OUTPUT: None
+            
+            @mac: MAC address of user's computer
+            @name: User's new changed name
+        """
+        
+        command = f"UPDATE {self.table_name} hostname = {name} WHERE mac = {mac};"
+        self.commit(command, mac, name)
