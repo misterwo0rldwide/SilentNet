@@ -7,13 +7,15 @@
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #ffffff;
+            background: linear-gradient(135deg, #2c3e50, #34495e); /* Darker gradient for better contrast */
+            color: #fff;
             position: relative;
+            overflow: hidden;
         }
 
         #loading-window {
@@ -21,26 +23,28 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            width: 300px;
-            height: 250px;
-            background-color: #f3f4f6;
-            border-radius: 16px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
             text-align: center;
         }
 
         #loading-window h2 {
             margin: 0;
-            font-size: 1.2rem;
-            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
         }
 
         .spinner {
-            margin: 20px 0;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #e5e7eb;
-            border-top: 4px solid #3b82f6;
+            margin: 25px 0;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -63,31 +67,71 @@
 
         #logo img {
             width: 100%;
-            height: 100%;
-            object-fit: contain;
+            height: auto;
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+            mix-blend-mode: lighten;
         }
 
         .connect-btn, .exit-btn {
             margin-top: 20px;
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 1rem;
-            background-color: #3b82f6;
-            color: white;
+            font-weight: 500;
+            color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .connect-btn:hover, .exit-btn:hover {
+        .connect-btn {
+            background-color: #3b82f6; /* Blue */
+        }
+
+        .connect-btn:hover {
             background-color: #2563eb;
+            transform: translateY(-2px);
         }
 
         .exit-btn {
-            background-color: #f44336;
+            background-color: #e74c3c; /* Red */
         }
 
         .exit-btn:hover {
-            background-color: #e53935;
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        /* Background animation */
+        @keyframes moveBackground {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 10.01%);
+            background-size: 20px 20px;
+            animation: moveBackground 10s infinite linear;
+            z-index: -1;
         }
     </style>
 </head>
@@ -98,10 +142,12 @@
 </div>
 
 <div id="loading-window">
-    <h2>Connecting...</h2>
+    <h2>Connecting to Silent Net...</h2>
     <div class="spinner"></div>
-    <button class="connect-btn" onclick="manualConnect()">Try to Connect</button>
-    <button class="exit-btn" onclick="exitProgram()">Exit</button>
+    <div class="button-group">
+        <button class="connect-btn" onclick="manualConnect()">Try to Connect</button>
+        <button class="exit-btn" onclick="exitProgram()">Exit</button>
+    </div>
 </div>
 
 <script>
@@ -119,10 +165,12 @@
     }
 
     function exitProgram() {
-        fetch('/exit-program')
+        if (confirm("Are you sure you want to exit?")) {
+            fetch('/exit-program')
             alert("Exiting program...");
             window.close();
         }
+    }
 </script>
 
 </body>

@@ -5,78 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAC List</title>
     <style>
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #ffffff;
-        margin: 0;
-        padding: 0;
-    }
-
-    .container {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        grid-gap: 20px;
-        justify-content: center;
-        margin: 0 auto;
-        padding: 20px;
-        max-width: 80%;
-    }
-
-    .button {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        padding: 15px 30px;
-        cursor: pointer;
-        font-size: 16px;
-        text-align: center;
-        width: 180px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-
-    .button:hover {
-        background-color: #f1f1f1;
-        transform: translateY(-3px);
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-    }
-
-    .button:active {
-        transform: translateY(1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .refresh-btn {
-        display: block;
-        margin: 20px auto;
-        padding: 12px 25px;
-        font-size: 18px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        text-align: center;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.3s ease, transform 0.3s ease;
-    }
-
-    .refresh-btn:hover {
-        background-color: #0056b3;
-        transform: translateY(-3px);
-    }
-
-    .refresh-btn:active {
-        transform: translateY(1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .logo {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 100px;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+    
+        .background {
+            background: linear-gradient(135deg, #1e1e2f, #2a2a40); /* This will create the dark gradient effect */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            box-shadow: none;
+            outline: none;
+            overflow: hidden;
+        }
+    
+        .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 20px;
+            justify-content: center;
+            margin: 0 auto;
+            padding: 20px;
+            max-width: 80%;
+        }
+    
+        .button {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+            width: 180px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+    
+        .button:hover {
+            background-color: #f1f1f1;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+    
+        .button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    
+        .refresh-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+    
+        .refresh-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-3px);
+        }
+    
+        .refresh-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    
+        .logo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 100px;
+            filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.6)); /* Dark shadow for better blend */
+            mix-blend-mode: lighten; /* Blending the logo into the background */
+        }
     </style>
 </head>
 <body>
