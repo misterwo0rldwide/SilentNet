@@ -109,7 +109,7 @@ class TCPsocket:
         self.__sock.bind((bind_ip, bind_port))
         self.__sock.listen(server_listen)
     
-    def server_socket_recv_client(self) -> tuple[socket.socket, tuple[str, int]]:
+    def server_socket_recv_client(self) -> socket.socket:
         """
             Server receives new client
             
@@ -120,8 +120,8 @@ class TCPsocket:
             @dst_port -> Destination Port of server
         """
         
-        client_sock, client_address = self.__sock.accept()
-        return client_sock, client_address
+        client_sock, _ = self.__sock.accept()
+        return client_sock
         
     
     def client_socket_connect_server(self, dst_ip : str, dst_port : int) -> None:
@@ -267,7 +267,7 @@ class TCPsocket:
 
 class client (TCPsocket):
     
-    def __init__(self, sock: Optional[socket.socket] = None, address = None):
+    def __init__(self, sock: Optional[socket.socket] = None):
         """
             Create the client side socket
             socket type: TCP
@@ -279,24 +279,19 @@ class client (TCPsocket):
         """
         
         super().__init__(sock)
-        
-        # Address is only passed when a client connects to server side
-        # Any other situation the whoever uses the client class won't need to pass address
-        # Since he will be the client itself and already knows its address
-        
-        if address != None:
-            self.__addr = address
     
+        # Add settings in order to get mac address
+        self.__mac = ...
     
     def get_address(self) -> str:
         """
-            Returns client's address
+            Returns client's mac address
             
             INPUT: None
-            OUTPUT: Address of client
+            OUTPUT: Address of client's mac
         """
         
-        return self.__addr
+        return self.__mac
     
     def connect(self, dst_ip : str, dst_port : int) -> bool:
         """
@@ -374,5 +369,5 @@ class server (TCPsocket):
             OUTPUT: Client object
         """
         
-        c = client(*self.server_socket_recv_client())
+        c = client(self.server_socket_recv_client())
         return c
