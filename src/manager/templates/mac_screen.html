@@ -3,27 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MAC List</title>
+    <title>Connected Clients</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-        }
-    
-        .background {
-            background: linear-gradient(135deg, #1e1e2f, #2a2a40); /* This will create the dark gradient effect */
-            height: 100vh;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: white;
-            box-shadow: none;
-            outline: none;
+            height: 100vh;
+            background: linear-gradient(135deg, #2c3e50, #34495e); /* Darker gradient for better contrast */
+            color: #fff;
+            position: relative;
             overflow: hidden;
         }
-    
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 10.01%);
+            background-size: 20px 20px;
+            animation: moveBackground 10s infinite linear;
+            z-index: -1;
+        }
+
+        @keyframes moveBackground {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+
         .container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -33,11 +53,10 @@
             padding: 20px;
             max-width: 80%;
         }
-    
         .button {
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
-            padding: 15px 30px;
+            padding: 15px 10px; /* Adjusted padding to ensure text fits */
             cursor: pointer;
             font-size: 16px;
             text-align: center;
@@ -45,19 +64,26 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            position: relative;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
         }
-    
+
         .button:hover {
             background-color: #f1f1f1;
             transform: translateY(-3px);
             box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
         }
-    
+
         .button:active {
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-    
+
         .refresh-btn {
             display: block;
             margin: 20px auto;
@@ -72,17 +98,17 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: background-color 0.3s ease, transform 0.3s ease;
         }
-    
+
         .refresh-btn:hover {
             background-color: #0056b3;
             transform: translateY(-3px);
         }
-    
+
         .refresh-btn:active {
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-    
+
         .logo {
             position: absolute;
             top: 20px;
@@ -90,6 +116,22 @@
             width: 100px;
             filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.6)); /* Dark shadow for better blend */
             mix-blend-mode: lighten; /* Blending the logo into the background */
+        }
+
+        /* Tooltip for displaying full text on hover */
+        .tooltip {
+            position: absolute;
+            top: 10px; /* Position at the top of the screen */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            white-space: nowrap;
+            z-index: 1000;
+            display: none; /* Hidden by default */
         }
     </style>
 </head>
@@ -100,14 +142,34 @@
     <!-- Refresh Button -->
     <button class="refresh-btn" onclick="location.reload();">Refresh Users</button>
     
+    <!-- Tooltip for displaying full text on hover -->
+    <div id="tooltip" class="tooltip"></div>
+    
     <!-- Print all ip list -->
     <div class="container">
-        {% for mac in mac_list %}
+        {% for name in name_list %}
         <form action="/next_page" method="get" style="margin-left: 90px;">
-            <input type="hidden" name="ip" value="{{ mac }}">
-            <button class="button" type="submit">{{ mac }}</button>
+            <input type="hidden" name="ip" value="{{ name }}">
+            <button class="button" type="submit" onmouseover="showTooltip('{{ name }}')" onmouseout="hideTooltip()">
+                {{ name[:18] }}{% if name|length > 18 %}...{% endif %}
+            </button>
         </form>
         {% endfor %}
     </div>
+
+    <script>
+        // Function to show the tooltip with the full text
+        function showTooltip(text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+        }
+
+        // Function to hide the tooltip
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+    </script>
 </body>
 </html>
