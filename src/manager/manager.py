@@ -9,7 +9,7 @@ import sys, webbrowser, os, signal
 from flask import *
 
 # Append parent directory to be able to append protocol
-sys.path.append(sys.argv[0][:sys.argv[0].index("\\manager")])
+sys.path.append(sys.path[0][:sys.path[0].index("\\manager")])
 from protocol import *
 
 __author__ = "Omer Kfir"
@@ -38,7 +38,7 @@ def submit_settings():
 
     print(employees_amount, safety)
     return redirect(url_for("employees_screen"))
-
+ 
 # Main screen - Gets current connected clients
 #               And updates screen through them
 @web_app.route("/employees")
@@ -54,7 +54,6 @@ def attemp_server_connection() -> bool:
         OUTPUT: Boolean value to indicate if connection succeeded
     """
     global manager_server_sock
-
 
     manager_server_sock = client()
     connection_status = manager_server_sock.connect("127.0.0.1", 6743)
@@ -80,13 +79,13 @@ def exit_proj():
 def main():
     
     direct = ""
-    connected = attemp_server_connection()
+    #connected = attemp_server_connection()
+    connected = True
     if not connected:
         direct = "/loading"
     
     port = TCPsocket.get_free_port()
     webbrowser.open(f"http://127.0.0.1:{port}" + direct)
-
 
     web_app.run(port=port)
 
