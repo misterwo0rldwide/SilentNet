@@ -7,7 +7,8 @@
 
 import sys, threading
 
-sys.path.append("..")
+# Append parent directory to be able to append protocol
+sys.path.append(sys.argv[0][:sys.argv[0].index("\\server")])
 from protocol import *
 from DB import *
 
