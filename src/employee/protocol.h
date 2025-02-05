@@ -11,9 +11,9 @@
 #include <linux/stdarg.h> // Handling unkown amount of arguments
 
 /* Message types */
-#define MSG_PROCESS_CLOSE "MPC"
-#define MSG_PROCESS_OPEN "MPO"
-#define MSG_INPUT_EVENT "MIE"
+#define MSG_PROCESS_CLOSE "CPC"
+#define MSG_PROCESS_OPEN "CPO"
+#define MSG_INPUT_EVENT "CIE"
 
 #define PROTOCOL_SEPARATOR "\x1f"
 

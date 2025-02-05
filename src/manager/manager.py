@@ -57,6 +57,10 @@ def settings_screen():
 # Get settings screen data
 @web_app.route("/submit_settings", methods=["POST"])
 def submit_settings():
+    employees_amount = request.form.get('employees_amount')
+    safety = request.form.get('safety')
+
+    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
     return redirect(url_for("employees_screen"))
  
 # Main screen - Gets current connected clients
@@ -64,8 +68,11 @@ def submit_settings():
 @web_app.route("/employees")
 @check_screen_access
 def employees_screen():
-    connected_clients = ["OmerKfirAndYuvalMendel", "aaaaaaaaaaaaaabbbbbbbbbbbbbbcccccccccccccc", "01:23:45:67:89:ab", "a1:b2:c3:d4:e5:f6", "f0:da:00:11:22:33", "3c:ff:ef:45:67:89", "bc:de:12:34:56:78", "00:0a:95:9d:68:16", "ab:cd:ef:01:23:45", "00:1a:2b:3c:4d:5e", "10:20:30:40:50:60"]
-    return render_template("mac_screen.html", name_list=connected_clients)
+
+    manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+    connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[1:]]
+
+    return render_template("mac_screen.html", name_list = connected_clients)
 
 def attemp_server_connection() -> bool:
     """
@@ -77,7 +84,7 @@ def attemp_server_connection() -> bool:
     global manager_server_sock
 
     manager_server_sock = client()
-    connection_status = manager_server_sock.connect("127.0.0.1", 6743)
+    connection_status = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
 
     return connection_status
 

@@ -8,7 +8,8 @@
 import sys, threading
 
 # Append parent directory to be able to append protocol
-sys.path.append(sys.path[0][:sys.path[0].index("\\manager")])
+path = sys.path[0]
+sys.path.append(path[:sys.path[0].index("\\server")])
 from protocol import *
 from DB import *
 
@@ -25,21 +26,47 @@ clients_recv_lock = threading.Lock()
 max_clients = ... # Max amount of clients connected simultaneously to server
 
 # Data base object
-data_base = ...
+log_data_base = ...
+uid_data_base = ...
 
-#def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
-#    """
-#        Processes client's sent data
+def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
+    """
+        Processes client's sent data
         
-#        INPUT: client, data
-#        OUTPUT: None
+        INPUT: client, log_type, log_params
+        OUTPUT: None
         
-#        @client -> Protocol client object
-#        @data -> List of fields of message sent by client
-#    """
+        @client -> Protocol client object
+        @log_type -> Logging type of the current message
+        @log_params -> Logging message paramteres
+    """
     
-#    data_base.insert_data(client.get_address()[0], log_type, log_params)
+    log_data_base.insert_data(client.get_address()[0], log_type, log_params)
 
+def process_manager_request(client : client, msg_type : str, msg_params : bytes) -> None:
+    """
+        Processes client's sent data
+        
+        INPUT: client, msg_type, msg_params
+        OUTPUT: None
+        
+        @client -> Protocol client object
+        @msg_type -> Message type
+        @msg_params -> Message paramteres
+    """
+
+    ret_msg = ""
+    ret_msg_type = ""
+
+    # Buisnes logic of manager requets
+    if msg_type == MessageParser.MANAGER_GET_CLIENTS:
+        ret_msg = uid_data_base.get_clients()
+        ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
+    
+    else:
+        ...
+    
+    client.protocol_send(ret_msg_type, *ret_msg)
 
 def remove_disconnected_client(client : client) -> None:
     """
@@ -68,9 +95,37 @@ def remove_disconnected_client(client : client) -> None:
     client.close()
                 
 
-def get_clients_hooked_data(client : client) -> None:
+def update_clients(client : client) -> None:
     """
-        Gets connected client data from hooked functions
+        Updates list of connected client to server
+        
+        INPUT: client
+        OUTPUT: None
+        
+        @client -> Protocol client object
+    """
+
+    # All of the clients send a message which states wether they are clients or a manager
+    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+    
+    # Ensure client is connected
+    if data == b'':
+        return
+
+    log_type, log_params = data
+    log_type = log_type.decode()
+
+    # If client connects
+    if log_type == MessageParser.CLIENT_START_COMM:
+        mac_addr, hostname = log_params
+        
+        # If user wasn't already connnected
+        if not uid_data_base.check_user_existence(mac_addr):
+            uid_data_base.insert_data(mac_addr, hostname)
+
+def manage_comm(client : client) -> None:
+    """
+        Manages communication 
         
         INPUT: client
         OUTPUT: None
@@ -79,6 +134,7 @@ def get_clients_hooked_data(client : client) -> None:
     """
     global clients_connected
     
+    update_clients(client)
     while proj_run:
 
         # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
@@ -88,10 +144,15 @@ def get_clients_hooked_data(client : client) -> None:
         if data == b'':
             break
     
-        log_type, log_params = data
-        log_type = log_type.decode()
+        msg_type = data[0]
+        msg_type = msg_type.decode()
 
-        process_client_data(client, log_type, log_params)
+        if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
+            process_client_data(client, msg_type, data[1:])
+        
+        elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
+            process_manager_request(client, msg_type, data[1:])
+        
     
     remove_disconnected_client(client)
     
@@ -101,14 +162,14 @@ def get_clients_hooked_data(client : client) -> None:
     if len(clients_connected) + 1 == max_clients:
         clients_recv_event.set()
 
-def get_clients(server : server, max_clients : int) -> None:
+def get_clients(server_comm : server, max_clients : int) -> None:
     """
         Connect clients to server
         
-        INPUT: server, max_clients
+        INPUT: server_comm, max_clients
         OUTPUT: None
         
-        @server -> Protocol server object
+        @server_comm -> Protocol server object
         @max_clients -> Maximum amount of clients chosen by the manager
     """
     global clients_connected
@@ -120,8 +181,8 @@ def get_clients(server : server, max_clients : int) -> None:
 
             # If did not receive maximum amount of clients
             if len(clients_connected) < max_clients:
-                client = server.recv_client()
-                clients_thread = threading.Thread(target=get_clients_hooked_data, args=(client,))
+                client = server_comm.recv_client()
+                clients_thread = threading.Thread(target=manage_comm, args=(client,))
                 
                 # Append client thread to list
                 with clients_recv_lock:
@@ -142,23 +203,24 @@ def get_clients(server : server, max_clients : int) -> None:
             print(f"Error accepting client: {e}")
 
 def main():
-    global max_clients, data_base
+    global max_clients, log_data_base, uid_data_base
 
-    data_base = UserLogsORM(UserLogsORM.DB_NAME, UserLogsORM.USER_LOGS_NAME)
+    log_data_base = UserLogsORM(path + "\\" + UserId.DB_NAME, UserLogsORM.USER_LOGS_NAME)
+    uid_data_base = UserId(path + "\\" + UserId.DB_NAME, UserId.USER_ID_NAME)
+
     max_clients = 5
 
-    server = server(max_clients)
-    get_clients(server, max_clients)
+    server_comm = server(max_clients)
+    get_clients(server_comm, max_clients)
 
-    server.close()
+    server_comm.close()
 
-    data_base.delete_records_DB()
-    data_base.close_DB()
+    log_data_base.delete_records_DB()
+    log_data_base.close_DB()
 
     for client_thread, client_sock in clients_connected:
         client_sock.close()
         client_thread.join()
-    
 
 if __name__ == "__main__":
     main()

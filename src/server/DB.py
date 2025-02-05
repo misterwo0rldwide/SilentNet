@@ -27,6 +27,7 @@ class DBHandler():
         self.conn = sqlite3.connect(db_name, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.table_name = table_name
+        self.db_name = db_name
 
         self._lock = threading.Lock()
     
@@ -50,24 +51,27 @@ class DBHandler():
         command = f"DELETE FROM {self.table_name}"
         self.commit(command)
     
-    def commit(self, command: str, *command_args) -> None:
+    def commit(self, command: str, *command_args):
         """
             Commits a command to database
 
             INPUT: command, command_args
-            OUTPUT: None
+            OUTPUT: Return value of sql commit
         
             @command: SQL command to execute
             @command_args: Arguments for the command
         """
+        ret_data = ""
 
         with self._lock:
             try:
-                self.cursor.execute(command, command_args)
+                ret_data = self.cursor.execute(command, command_args).fetchall()
                 self.conn.commit()
             except Exception as e:
                 self.conn.rollback()
                 print(f"Commit DB exception {e}")
+        
+        return ret_data
 
 
 class UserLogsORM (DBHandler):
@@ -75,7 +79,7 @@ class UserLogsORM (DBHandler):
         Singleton implementation of UserLogsORM inheriting from DBHandler
     """
 
-    DB_NAME = "client_logs.db"
+    DB_NAME = "server_db.db"
     USER_LOGS_NAME = "logs"
     
     _lock = threading.Lock()
@@ -114,7 +118,7 @@ class UserLogsORM (DBHandler):
 
 class UserId (DBHandler):
 
-    DB_NAME = "client_logs.db"
+    DB_NAME = "server_db.db"
     USER_ID_NAME = "uid"
 
     _lock = threading.Lock()
@@ -130,11 +134,11 @@ class UserId (DBHandler):
         
         with cls._lock:
             if cls._instance is None:
-                cls._instance = super(UserLogsORM, cls).__new__(cls)
+                cls._instance = super(UserId, cls).__new__(cls)
                 cls._instance.__init__(db_name, table_name)
             return cls._instance
     
-    def insert_data(self, mac: str, hostname : str) -> None:
+    def insert_data(self, mac: str, hostname : str):
         """
             Insert data to SQL table
 
@@ -148,7 +152,7 @@ class UserId (DBHandler):
         command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?,?);"
         self.commit(command, mac, hostname)
     
-    def update_name(self, mac: str, name : str) -> None:
+    def update_name(self, mac: str, name : str):
         """
             Manager changes a name for a client
             
@@ -159,5 +163,31 @@ class UserId (DBHandler):
             @name: User's new changed name
         """
         
-        command = f"UPDATE {self.table_name} hostname = {name} WHERE mac = {mac};"
+        command = f"UPDATE {self.table_name} SET hostname = ? WHERE mac = ?;"
         self.commit(command, mac, name)
+    
+    def check_user_existence(self, mac : str) -> int:
+        """
+            Checking for a certain client to see if already connected
+            
+            INPUT: mac
+            OUTPUT: int
+            
+            @mac: MAC address of user's computer
+        """
+
+        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE mac = ?"
+        return self.commit(command, mac)[0][0] > 0
+    
+    def get_clients(self) -> list[str]:
+        """
+            Gets all data on clients which connect to system
+            
+            INPUT: None
+            OUTPUT: list[str]
+            
+            @mac: All hostnames of clients
+        """
+
+        command = f"SELECT hostname FROM {self.table_name}"
+        return [result[0] for result in self.commit(command)]

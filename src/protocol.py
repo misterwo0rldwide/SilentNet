@@ -17,11 +17,22 @@ class MessageParser:
     PROTOCOL_SEPARATOR = b"\x1f"
     PROTOCOL_DATA_INDEX = 1
 
+    SIG_MSG_INDEX = 0
+
     # Message types
-    MSG_PROCESS_OPEN = "MPO"
-    MSG_PROCESS_CLOSE = "MPC"
-    MSG_INPUT_EVENT = "MIE"
-    
+    CLIENT_MSG_SIG = "C"
+    CLIENT_START_COMM = "CSC"
+    CLIENT_PROCESS_OPEN = "CPO"
+    CLIENT_PROCESS_CLOSE = "CPC"
+    CLIENT_INPUT_EVENT = "CIE"
+
+    # Manager commands
+    MANAGER_MSG_SIG = "M"
+    MANAGER_START_COMM = "MSC"
+    MANAGER_GET_CLIENTS = "MGC"
+    MANAGER_GET_CLIENT_DATA = "MGD"
+
+
     """
         Decorator staticmethod does not block a function to be called through an instance
         Rather it ensures that simply not pass a self object to the function even if function called through instance
@@ -91,8 +102,18 @@ class TCPsocket:
         
         else:
             self.__sock = sock
-        
-        self.__sock.settimeout(0.5)
+    
+    def set_timeout(self, time):
+        """
+            Sets a timeout for a socket
+            
+            INPUT: time
+            OUTPUT: None
+            
+            @time -> Amount of timeout time
+        """
+
+        self.__sock.settimeout(time)
     
     def create_server_socket(self, bind_ip : str, bind_port : int, server_listen : int) -> None:
         """
