@@ -165,11 +165,7 @@
     }
 
     function exitProgram() {
-        if (confirm("Are you sure you want to exit?")) {
-            fetch('/exit-program')
-            alert("Exiting program...");
-            window.close();
-        }
+        window.location.href = "exit";
     }
 </script>
 
