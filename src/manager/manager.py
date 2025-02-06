@@ -10,7 +10,7 @@ from functools import wraps
 from flask import *
 
 # Append parent directory to be able to append protocol
-sys.path.append(sys.path[0][:sys.path[0].index("\\manager")])
+sys.path.append(sys.path[0][:sys.path[0].index("\\manager")] + "\\shared")
 from protocol import *
 
 __author__ = "Omer Kfir"

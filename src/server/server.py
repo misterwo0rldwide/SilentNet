@@ -9,7 +9,9 @@ import sys, threading
 
 # Append parent directory to be able to append protocol
 path = sys.path[0]
-sys.path.append(path[:sys.path[0].index("\\server")])
+sys.path.append(path[:sys.path[0].index("\\server")] + "\\shared")
+
+from encryption import *
 from protocol import *
 from DB import *
 
