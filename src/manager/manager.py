@@ -30,14 +30,19 @@ current_screen = "/loading"
 
 #Decorator to handle screen access and redirections
 def check_screen_access(f):
-    # Preserve data on the original called function
     @wraps(f)
     def wrapper(*args, **kwargs):
         global current_screen
 
+        # Allow access to the loading screen regardless of the current screen
+        if request.path == "/loading":
+            current_screen = request.path
+            return f(*args, **kwargs)
+
+        # For other screens, enforce the hierarchy
         if screens_dictionary[current_screen] > screens_dictionary[request.path]:
             return redirect(current_screen)
-        
+
         current_screen = request.path
         return f(*args, **kwargs)
     return wrapper
@@ -60,7 +65,11 @@ def submit_settings():
     employees_amount = request.form.get('employees_amount')
     safety = request.form.get('safety')
 
-    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
+    try:
+        manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
+    except Exception:
+        return redirect(url_for("loading_screen"))
+    
     return redirect(url_for("employees_screen"))
  
 # Main screen - Gets current connected clients
@@ -86,6 +95,7 @@ def attemp_server_connection() -> bool:
     manager_server_sock = client()
     connection_status = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
 
+    manager_server_sock.set_timeout(0.5)
     return connection_status
 
 # Notifies if managed to connect to server
@@ -99,11 +109,11 @@ def manual_connect():
 def loading_screen():
     return render_template("loading_screen.html")
 
-# Closes the whole program
 @web_app.route("/exit-program")
 def exit_proj():
-    manager_server_sock.close()
-    os.kill(os.getpid(), signal.SIGINT)
+    manager_server_sock.close()  # Close the server socket
+    os.kill(os.getpid(), signal.SIGINT)  # Terminate the process
+    return '', 204  # No content as response
 
 @web_app.errorhandler(404)
 def page_not_found(error):
@@ -113,9 +123,14 @@ def page_not_found(error):
 def page_not_found(error):
     return render_template("internal_error.html")
 
+@web_app.route("/exit")
+def exit_page():
+    return render_template("exit_screen.html")
+
 def main():
     
     direct = ""
+    
     connected = attemp_server_connection()
     if not connected:
         direct = "/loading"
