@@ -65,10 +65,7 @@ def submit_settings():
     employees_amount = request.form.get('employees_amount')
     safety = request.form.get('safety')
 
-    try:
-        manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
-    except Exception:
-        return redirect(url_for("loading_screen"))
+    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
     
     return redirect(url_for("employees_screen"))
  
@@ -94,8 +91,10 @@ def attemp_server_connection() -> bool:
 
     manager_server_sock = client()
     connection_status = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
-
-    manager_server_sock.set_timeout(0.5)
+    
+    if connection_status:
+        manager_server_sock.set_timeout(0.5)
+    
     return connection_status
 
 # Notifies if managed to connect to server
