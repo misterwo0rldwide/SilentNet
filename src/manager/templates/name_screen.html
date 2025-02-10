@@ -148,8 +148,8 @@
     <!-- Print all ip list -->
     <div class="container">
         {% for name in name_list %}
-        <form action="/next_page" method="get" style="margin-left: 90px;">
-            <input type="hidden" name="ip" value="{{ name }}">
+        <form action="/stats_screen" method="get" style="margin-left: 90px;">
+            <input type="hidden" name="client_name" value="{{ name }}">
             <button class="button" type="submit" onmouseover="showTooltip('{{ name }}')" onmouseout="hideTooltip()">
                 {{ name[:18] }}{% if name|length > 18 %}...{% endif %}
             </button>

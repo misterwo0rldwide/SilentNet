@@ -12,6 +12,7 @@ from flask import *
 # Append parent directory to be able to append protocol
 sys.path.append(sys.path[0][:sys.path[0].index("\\manager")] + "\\shared")
 from protocol import *
+from encryption import *
 
 __author__ = "Omer Kfir"
 
@@ -24,6 +25,7 @@ screens_dictionary = {"/loading" : 0,
                       "/": 1,
                       "/settings": 2,
                       "/employees": 3,
+                      "/stats_screen" : 4,
                       }
 
 current_screen = "/loading"
@@ -38,6 +40,11 @@ def check_screen_access(f):
         if request.path == "/loading":
             current_screen = request.path
             return f(*args, **kwargs)
+        
+        if request.path == "/employees" and screens_dictionary[current_screen] - 1 == screens_dictionary[request.path]:
+            current_screen = request.path
+            return f(*args, **kwargs)
+
 
         # For other screens, enforce the hierarchy
         if screens_dictionary[current_screen] > screens_dictionary[request.path]:
@@ -65,7 +72,7 @@ def submit_settings():
     employees_amount = request.form.get('employees_amount')
     safety = request.form.get('safety')
 
-    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
+    #manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
     
     return redirect(url_for("employees_screen"))
  
@@ -75,10 +82,12 @@ def submit_settings():
 @check_screen_access
 def employees_screen():
 
-    manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
-    connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[1:]]
+    #manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+    #connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[1:]]
 
-    return render_template("mac_screen.html", name_list = connected_clients)
+    connected_clients = ["itzik", "shlomo"]
+
+    return render_template("name_screen.html", name_list = connected_clients)
 
 def attemp_server_connection() -> bool:
     """
@@ -108,6 +117,26 @@ def manual_connect():
 def loading_screen():
     return render_template("loading_screen.html")
 
+@web_app.route("/stats_screen")
+@check_screen_access
+def stats_screen():
+    client_name = request.args.get('client_name')
+    print(client_name)
+
+    # Tmp data till actual data is written in proj
+    stats = {
+        "processes": {
+            "labels": ["Process A", "Process B", "Process C"],
+            "data": [12, 19, 3]
+        },
+        "inactivity": {
+            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            "data": [3, 5, 2, 6, 4, 8, 1]
+        }
+    }
+
+    return render_template("stats_screen.html", stats=stats, client_name=client_name)
+
 @web_app.route("/exit-program")
 def exit_proj():
     manager_server_sock.close()  # Close the server socket
@@ -131,6 +160,7 @@ def main():
     direct = ""
     
     connected = attemp_server_connection()
+    connected = True
     if not connected:
         direct = "/loading"
     
