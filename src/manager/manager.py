@@ -10,7 +10,7 @@ from functools import wraps
 from flask import *
 
 # Append parent directory to be able to append protocol
-sys.path.append(sys.path[0][:sys.path[0].index("\\manager")] + "\\shared")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shared')))
 from protocol import *
 from encryption import *
 
@@ -26,28 +26,32 @@ screens_dictionary = {"/loading" : 0,
                       "/settings": 2,
                       "/employees": 3,
                       "/stats_screen" : 4,
+                      "/exit" :  5, # Not a real number, Just to add it to the dictionary
                       }
 
 current_screen = "/loading"
+previous_screen = ...
 
 #Decorator to handle screen access and redirections
 def check_screen_access(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        global current_screen
+        global current_screen, previous_screen
 
-        # Allow access to the loading screen regardless of the current screen
-        if request.path == "/loading":
+        # Allow access to the loading/exit screen regardless of the current screen
+        if request.path == "/loading" or request.path == "/exit":
+            previous_screen = current_screen
             current_screen = request.path
             return f(*args, **kwargs)
         
-        if request.path == "/employees" and screens_dictionary[current_screen] - 1 == screens_dictionary[request.path]:
+        elif request.path == "/employees" and screens_dictionary[current_screen] > screens_dictionary[request.path]:
+            previous_screen = current_screen
             current_screen = request.path
             return f(*args, **kwargs)
 
 
         # For other screens, enforce the hierarchy
-        if screens_dictionary[current_screen] > screens_dictionary[request.path]:
+        elif screens_dictionary[current_screen] > screens_dictionary[request.path]:
             return redirect(current_screen)
 
         current_screen = request.path
@@ -85,7 +89,7 @@ def employees_screen():
     #manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
     #connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[1:]]
 
-    connected_clients = ["itzik", "shlomo"]
+    connected_clients = ["itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo"]
 
     return render_template("name_screen.html", name_list = connected_clients)
 
@@ -130,8 +134,8 @@ def stats_screen():
             "data": [12, 19, 3]
         },
         "inactivity": {
-            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-            "data": [3, 5, 2, 6, 4, 8, 1]
+            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "itzko", "shlomo"],
+            "data": [3, 5, 2, 6, 4, 8, 1, 200, 5]
         }
     }
 
@@ -152,8 +156,9 @@ def page_not_found(error):
     return render_template("internal_error.html")
 
 @web_app.route("/exit")
+@check_screen_access
 def exit_page():
-    return render_template("exit_screen.html")
+    return render_template("exit_screen.html", previous_screen=previous_screen)
 
 def main():
     

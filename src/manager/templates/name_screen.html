@@ -13,7 +13,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: linear-gradient(135deg, #2c3e50, #34495e); /* Darker gradient for better contrast */
+            background: linear-gradient(135deg, #1e1e2f, #2a2a40); /* Dark gradient for consistency */
             color: #fff;
             position: relative;
             overflow: hidden;
@@ -84,9 +84,9 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .refresh-btn {
-            display: block;
-            margin: 20px auto;
+        .refresh-btn, .exit-btn {
+            display: inline-block; /* Changed to inline-block to place buttons side by side */
+            margin: 20px 10px; /* Adjusted margin for spacing */
             padding: 12px 25px;
             font-size: 18px;
             background-color: #007bff;
@@ -99,14 +99,22 @@
             transition: background-color 0.3s ease, transform 0.3s ease;
         }
 
-        .refresh-btn:hover {
+        .refresh-btn:hover, .exit-btn:hover {
             background-color: #0056b3;
             transform: translateY(-3px);
         }
 
-        .refresh-btn:active {
+        .refresh-btn:active, .exit-btn:active {
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .exit-btn {
+            background-color: #dc3545; /* Red color for the exit button */
+        }
+
+        .exit-btn:hover {
+            background-color: #c82333; /* Darker red on hover */
         }
 
         .logo {
@@ -141,6 +149,9 @@
     
     <!-- Refresh Button -->
     <button class="refresh-btn" onclick="location.reload();">Refresh Users</button>
+    
+    <!-- Exit Button -->
+    <button class="exit-btn" onclick="window.location.href='/exit'">Exit</button>
     
     <!-- Tooltip for displaying full text on hover -->
     <div id="tooltip" class="tooltip"></div>

@@ -5,11 +5,11 @@
 #
 #   Omer Kfir (C)
 
-import sys, threading
+import sys, threading, os
 
 # Append parent directory to be able to append protocol
-path = sys.path[0]
-sys.path.append(path[:sys.path[0].index("\\server")] + "\\shared")
+path = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(path, '../shared')))
 
 from encryption import *
 from protocol import *
