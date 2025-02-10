@@ -19,6 +19,7 @@
             gap: 20px;
             padding: 20px;
             margin-top: 150px;
+            position: relative;
         }
 
         .card {
@@ -26,12 +27,20 @@
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: all 0.5s ease;
+            cursor: pointer;
+            position: relative;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        .card.active {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            z-index: 100;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         }
 
         .card h3 {
@@ -44,31 +53,44 @@
             width: 100%;
             height: 200px;
             margin-top: 10px;
+            transition: height 0.5s ease;
         }
 
-        .progress-bar {
-            background: #444;
-            border-radius: 5px;
-            overflow: hidden;
-            height: 10px;
-            margin-top: 10px;
+        .card.active .chart-container {
+            height: calc(100% - 60px);
         }
 
-        .progress-bar-fill {
-            background: #00d1b2;
-            height: 100%;
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .card.active .close-btn {
+            display: block;
         }
 
         .logo {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 20px;
             width: 100px;
             filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.6));
+            z-index: 1000;
         }
 
         .return-btn {
-            position: absolute;
+            position: fixed;
             top: 20px;
             left: 20px;
             padding: 10px 20px;
@@ -79,6 +101,7 @@
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s ease;
+            z-index: 1000;
         }
 
         .return-btn:hover {
@@ -86,7 +109,7 @@
         }
 
         .client-name-container {
-            position: absolute;
+            position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -94,47 +117,39 @@
             font-size: 24px;
             font-weight: bold;
             color: #00d1b2;
+            z-index: 1000;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
 </head>
 <body>
-    <!-- Logo -->
     <img src="{{ url_for('static', filename='Logo.png') }}" alt="Logo" class="logo">
-
-    <!-- Return Button -->
     <button class="return-btn" onclick="window.location.href='/employees'">Return</button>
-
     <div class="client-name-container">
         Client: {{ client_name }}
     </div>
-
-    <!-- Main Content -->
     <div class="container">
-        <!-- Most Opened Processes -->
         <div class="card" id="processes">
             <h3>Most Opened Processes</h3>
             <div class="chart-container">
                 <canvas id="processChart"></canvas>
             </div>
+            <button class="close-btn" onclick="closeCard(event)">X</button>
         </div>
-
-        <!-- Inactive Periods -->
         <div class="card" id="inactivity">
             <h3>Inactive Periods</h3>
             <div class="chart-container">
                 <canvas id="inactivityChart"></canvas>
             </div>
+            <button class="close-btn" onclick="closeCard(event)">X</button>
         </div>
     </div>
-
     <script>
-        // Get the stats data passed from Flask
         const stats = {{ stats | tojson | safe }};
 
-        // Initialize the charts
         document.addEventListener('DOMContentLoaded', () => {
-            // Most Opened Processes Chart
             const processChart = new Chart(document.getElementById('processChart'), {
                 type: 'bar',
                 data: {
@@ -149,30 +164,90 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false // Hide the legend
+                            display: false
                         }
                     }
                 }
             });
 
-            // Inactive Periods Chart
+            const parsedDates = stats.inactivity.labels.map(dateStr => {
+                const dateTime = luxon.DateTime.fromFormat(dateStr, 'yyyy-MM-dd HH:mm');
+                if (!dateTime.isValid) {
+                    console.error(`Invalid date: ${dateStr}`);
+                    return null;
+                }
+                return dateTime.toJSDate();
+            }).filter(date => date !== null);
+
             const inactivityChart = new Chart(document.getElementById('inactivityChart'), {
                 type: 'line',
                 data: {
-                    labels: stats.inactivity.labels,
+                    labels: parsedDates,
                     datasets: [{
-                        label: 'Inactive Time (hours)',
-                        data: stats.inactivity.data,
+                        label: 'Inactive Time (minutes)',
+                        data: stats.inactivity.data.slice(0, parsedDates.length),
                         borderColor: '#00d1b2',
                         fill: false,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#00d1b2'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                tooltipFormat: 'yyyy-MM-dd HH:mm',
+                                displayFormats: {
+                                    hour: 'HH:mm',
+                                    day: 'yyyy-MM-dd'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Inactive Time (minutes)'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: Math.max(...stats.inactivity.data) * 1.2
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${value} minutes`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         });
+
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+            });
+        });
+
+        function closeCard(event) {
+            event.stopPropagation();
+            const card = event.target.closest('.card');
+            card.classList.remove('active');
+        }
     </script>
 </body>
 </html>

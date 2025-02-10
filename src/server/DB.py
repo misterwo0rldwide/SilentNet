@@ -2,11 +2,13 @@
 #   
 #
 #   Omer Kfir (C)
-import sqlite3, threading
+import sqlite3, threading, os, sys
 from datetime import datetime
 
-__author__ = "Omer Kfir"
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shared')))
+from protocol import MessageParser
 
+__author__ = "Omer Kfir"
 
 class DBHandler():
     """
@@ -112,9 +114,48 @@ class UserLogsORM (DBHandler):
             @data: Bytes of data
         """
 
-        date = datetime.now().strftime("%H:%M:%S %Y-%m-%d")
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         command = f"INSERT INTO {self.table_name} (mac, type, data, date) VALUES (?,?,?,?);"
         self.commit(command, mac, data_type, data, date)
+    
+    # Statistics done with DB
+    def get_process_count(self, mac : str) -> list[tuple[str, int]]:
+        """
+            Gets the amount of times each process was opened for a certain client
+
+            INPUT: mac
+            OUTPUT: List of tuples of the name of the process and amount of times was opened
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"SELECT data, COUNT(*) FROM {self.table_name} WHERE type = '{CLIENT_PROCESS_OPEN}' AND mac = ? GROUP BY data;"
+        return self.commit(command, mac)
+    
+    def get_inactive_times(self, mac : str) -> list[tuple[datetime, int]]:
+        """
+            Calculates idle times of user
+
+            INPUT: mac
+            OUTPUT: List of tuples of the datetime the user went idle and the time of idleness
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"""
+            SELECT time_went_idle, 
+                   idle_seconds
+            FROM (
+                SELECT {mac}, 
+                    date AS time_went_idle, 
+                    (julianday(LEAD(date) OVER (PARTITION BY mac ORDER BY date)) - julianday(date)) * 86400 AS idle_seconds
+                FROM logs
+                WHERE type = '{CLIENT_INPUT_EVENT}'
+            ) AS subquery
+            WHERE idle_seconds > 5 * 60
+            ORDER BY idle_seconds DESC;
+        """
+        return self.commit(command)
 
 class UserId (DBHandler):
 
@@ -176,7 +217,7 @@ class UserId (DBHandler):
             @mac: MAC address of user's computer
         """
 
-        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE mac = ?"
+        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE mac = ?;"
         return self.commit(command, mac)[0][0] > 0
     
     def get_clients(self) -> list[str]:
@@ -185,11 +226,20 @@ class UserId (DBHandler):
             
             INPUT: None
             OUTPUT: list[str]
-            
-            @mac: All hostnames of clients
         """
 
         command = f"SELECT hostname FROM {self.table_name}"
         return [result[0] for result in self.commit(command)]
     
-    
+    def get_mac_by_hostname(self, hostname : str) -> str:
+        """
+            Gets the according MAC address of a computer by hostname
+            
+            INPUT: hostname
+            OUTPUT: str
+            
+            @hostname: Hostname of wanted computer
+        """
+
+        command = f"SELECT mac FROM {self.table_name} WHERE hostname = ?;"
+        return self.commit(command, hostname)[0][0]
