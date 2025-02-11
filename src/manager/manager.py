@@ -168,7 +168,8 @@ def stats_screen():
                 0.8, 1.1, 0.6, 0.4, 0.3, 0.7, 0.5, 1.3, 0.9, 1.5,
                 0.4, 0.7, 1.0, 0.5, 0.9, 1.2, 0.6, 0.8
             ]
-        }
+        },
+        "wpm" : 5,
     }
 
     return render_template("stats_screen.html", stats=stats, client_name=client_name)

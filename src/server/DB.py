@@ -156,6 +156,48 @@ class UserLogsORM (DBHandler):
             ORDER BY idle_seconds DESC;
         """
         return self.commit(command)
+    
+    def get_wpm(self, mac : str) -> int:
+        """
+            Calculates the average wpm the user does while excluding inactive times
+
+            INPUT: mac
+            OUTPUT: Integer
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"""
+            WITH keystrokes AS (
+            SELECT date, 
+                data,
+                LAG(date) OVER (PARTITION BY mac ORDER BY date) AS prev_date
+            FROM logs
+            WHERE type = 'CLIENT_INPUT_EVENT' AND mac = ?
+        ),
+        active_typing AS (
+            SELECT date, 
+                data,
+                prev_date,
+                (julianday(date) - julianday(prev_date)) * 86400 AS time_diff
+            FROM keystrokes
+            WHERE prev_date IS NOT NULL AND time_diff < 5 -- Exclude inactivity (e.g., >5 seconds)
+        ),
+        spaces_count AS (
+            SELECT COUNT(*) AS spaces
+            FROM active_typing
+            WHERE data = 28 -- Count only spaces
+        ),
+        total_typing_time AS (
+            SELECT SUM(time_diff) AS total_time
+            FROM active_typing
+        )
+        SELECT spaces,
+            total_time,
+            (spaces / (total_time / 60)) AS wpm -- Words per minute
+        FROM spaces_count, total_typing_time;
+        """
+        return self.commit(command)[0][0]
 
 class UserId (DBHandler):
 
