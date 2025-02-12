@@ -119,6 +119,11 @@ def manual_connect():
 @web_app.route("/loading")
 @check_screen_access
 def loading_screen():
+
+    # Ensure closing the socket if redirected to loading while socket still up
+    if manager_server_sock:
+        manager_server_sock.close()
+
     return render_template("loading_screen.html")
 
 @web_app.route("/stats_screen")

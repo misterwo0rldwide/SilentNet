@@ -43,7 +43,16 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         @log_params -> Logging message paramteres
     """
     
-    log_data_base.insert_data(client.get_address()[0], log_type, log_params)
+    if log_type == MessageParser.CLIENT_MSG_AUTH:
+        mac, hostname = MessageParser.protocol_message_deconstruct(log_params)
+        
+        client.set_address(mac)
+        uid_data_base.insert_data(mac, hostname)
+
+    else:
+        log_data_base.insert_data(client.get_address(), log_type, log_params)
+    
+    print(log_type, log_params)
 
 def process_manager_request(client : client, msg_type : str, msg_params : bytes) -> None:
     """
@@ -97,34 +106,6 @@ def remove_disconnected_client(client : client) -> None:
     client.close()
                 
 
-def update_clients(client : client) -> None:
-    """
-        Updates list of connected client to server
-        
-        INPUT: client
-        OUTPUT: None
-        
-        @client -> Protocol client object
-    """
-
-    # All of the clients send a message which states wether they are clients or a manager
-    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-    
-    # Ensure client is connected
-    if data == b'':
-        return
-
-    log_type, log_params = data
-    log_type = log_type.decode()
-
-    # If client connects
-    if log_type == MessageParser.CLIENT_START_COMM:
-        mac_addr, hostname = log_params
-        
-        # If user wasn't already connnected
-        if not uid_data_base.check_user_existence(mac_addr):
-            uid_data_base.insert_data(mac_addr, hostname)
-
 def manage_comm(client : client) -> None:
     """
         Manages communication 
@@ -136,7 +117,6 @@ def manage_comm(client : client) -> None:
     """
     global clients_connected
     
-    update_clients(client)
     while proj_run:
 
         # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
@@ -150,10 +130,10 @@ def manage_comm(client : client) -> None:
         msg_type = msg_type.decode()
 
         if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
-            process_client_data(client, msg_type, data[1:])
+            process_client_data(client, msg_type, data[1])
         
         elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-            process_manager_request(client, msg_type, data[1:])
+            process_manager_request(client, msg_type, data[1])
         
     
     remove_disconnected_client(client)

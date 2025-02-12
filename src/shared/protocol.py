@@ -21,14 +21,13 @@ class MessageParser:
 
     # Message types
     CLIENT_MSG_SIG = "C"
-    CLIENT_START_COMM = "CSC"
+    CLIENT_MSG_AUTH = "CAU"
     CLIENT_PROCESS_OPEN = "CPO"
     CLIENT_PROCESS_CLOSE = "CPC"
     CLIENT_INPUT_EVENT = "CIE"
 
     # Manager commands
     MANAGER_MSG_SIG = "M"
-    MANAGER_START_COMM = "MSC"
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
 
@@ -67,7 +66,7 @@ class MessageParser:
         return msg_buf
         
     @staticmethod
-    def protocol_message_deconstruct(msg : bytes, part_split : int) -> list[bytes]:
+    def protocol_message_deconstruct(msg : bytes, part_split : int = -1) -> list[bytes]:
         """
             Constructs a message to be sent by protocol rules
             
@@ -304,6 +303,18 @@ class client (TCPsocket):
         # Add settings in order to get mac address
         self.__mac = ...
     
+    def set_address(self, mac_addr) -> None:
+        """
+            Set client's mac addresss
+            
+            INPUT: mac_addr
+            OUTPUT: None
+
+            @mac_addr -> mac address of client
+        """
+
+        self.__mac = mac_addr
+
     def get_address(self) -> str:
         """
             Returns client's mac address
