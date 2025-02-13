@@ -149,27 +149,28 @@ class UserLogsORM (DBHandler):
                 SELECT mac, 
                     date AS time_went_idle, 
                     (julianday(LEAD(date) OVER (PARTITION BY mac ORDER BY date)) - julianday(date)) * 86400 AS idle_seconds
-                FROM logs
+                FROM {self.table_name}
                 WHERE type = '{MessageParser.CLIENT_INPUT_EVENT}' AND mac = ?
             ) AS subquery
             WHERE idle_seconds > 5;
         """
         return self.commit(command, mac)
     
-    def get_wpm(self, mac : str) -> int:
+    def get_wpm(self, mac : str, inactive : list[tuple[datetime, int]] = None) -> int:
         """
             Calculates the average wpm the user does while excluding inactive times
 
-            INPUT: mac
+            INPUT: mac, inactive
             OUTPUT: Integer
 
             @mac: MAC address of user's computer
+            @inactive: If user already calcualted inactive times
         """
 
         # Reduce time user went idle
-        total_inactive = sum(i[1] for i in self.get_inactive_times(mac))
+        total_inactive = sum(i[1] for i in (self.get_inactive_times(mac) if not inactive else inactive))
         command = f"""
-            SELECT COUNT(CASE WHEN data LIKE '%28' THEN 1 END) / (((julianday(MAX(date)) - julianday(MIN(date))) * 86400 - ?) / 60) FROM logs
+            SELECT COUNT(CASE WHEN data LIKE '%57' THEN 1 END) / (((julianday(MAX(date)) - julianday(MIN(date))) * 86400 - ?) / 60) FROM logs
             WHERE type = 'CIE' AND mac = ?;
         """
         return self.commit(command, total_inactive, mac)[0][0]

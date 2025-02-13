@@ -131,6 +131,7 @@ def stats_screen():
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
     stats = json.loads(manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
 
+    print(stats)
     return render_template("stats_screen.html", stats=stats, client_name=client_name)
 
 @web_app.route("/exit-program")

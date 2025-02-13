@@ -15,12 +15,12 @@
 
         .container {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* Ensure only 2 boxes per row */
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             padding: 20px;
             margin-top: 150px;
             position: relative;
-            max-width: 1200px; /* Optional: Limit container width for better alignment */
+            max-width: 1200px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -38,7 +38,7 @@
         .card h3 {
             margin-top: 0;
             font-size: 1.5rem;
-            color: #00d1b2; /* Light green color for card titles */
+            color: #00d1b2;
         }
 
         .expanded-card h3 {
@@ -72,7 +72,7 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%) scale(0.9); /* Start slightly smaller */
+            transform: translate(-50%, -50%) scale(0.9);
             width: 80%;
             height: 80%;
             z-index: 100;
@@ -80,17 +80,17 @@
             background: #2a2a40;
             border-radius: 10px;
             padding: 20px;
-            opacity: 0; /* Start invisible */
+            opacity: 0;
             transition: all 0.3s ease;
-            pointer-events: none; /* Disable interactions until visible */
+            pointer-events: none;
             display: flex;
             flex-direction: column;
         }
 
         .expanded-card.active {
-            opacity: 1; /* Fully visible */
-            transform: translate(-50%, -50%) scale(1); /* Scale to full size */
-            pointer-events: auto; /* Enable interactions */
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
         }
 
         .expanded-card .close-btn {
@@ -98,9 +98,9 @@
         }
 
         .expanded-card .chart-container {
-            flex: 1; /* Make the chart container fill the remaining space */
-            height: auto; /* Allow it to expand */
-            margin-top: 20px; /* Add some spacing below the title */
+            flex: 1;
+            height: auto;
+            margin-top: 20px;
         }
 
         .overlay {
@@ -109,16 +109,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7); /* Dark overlay */
+            background: rgba(0, 0, 0, 0.7);
             z-index: 99;
-            opacity: 0; /* Start invisible */
+            opacity: 0;
             transition: opacity 0.3s ease;
-            pointer-events: none; /* Disable interactions until visible */
+            pointer-events: none;
         }
 
         .overlay.active {
-            opacity: 1; /* Fully visible */
-            pointer-events: auto; /* Enable interactions */
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .logo {
@@ -161,7 +161,6 @@
             z-index: 1000;
         }
 
-        /* New styles for the WPM number */
         .wpm-number {
             display: flex;
             justify-content: center;
@@ -215,7 +214,6 @@
         </div>
     </div>
 
-    <!-- Expanded Card (Hidden by Default) -->
     <div class="overlay" id="overlay"></div>
     <div class="expanded-card" id="expandedCard">
         <button class="close-btn" onclick="closeExpandedCard()">X</button>
@@ -224,10 +222,13 @@
     <script>
         const stats = {{ stats | tojson | safe }};
 
-        // Initialize charts
         let processChart, inactivityChart;
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Debugging: Log the stats data
+            console.log('Stats Data:', stats);
+
+            // Process Chart
             processChart = new Chart(document.getElementById('processChart'), {
                 type: 'bar',
                 data: {
@@ -248,27 +249,47 @@
                 }
             });
 
+            // Debugging: Log inactivity data
+            console.log('Inactivity Labels:', stats.inactivity.labels);
+            console.log('Inactivity Data:', stats.inactivity.data);
+
+            // Parse dates for inactivity chart
             const parsedDates = stats.inactivity.labels.map(dateStr => {
-                const dateTime = luxon.DateTime.fromFormat(dateStr, 'yyyy-MM-dd HH:mm');
+                // Use Luxon to parse the date string with the correct format
+                const dateTime = luxon.DateTime.fromFormat(dateStr, 'yyyy-MM-dd HH:mm:ss');
                 if (!dateTime.isValid) {
                     console.error(`Invalid date: ${dateStr}`);
                     return null;
                 }
-                return dateTime.toJSDate();
+                return dateTime.toJSDate(); // Convert to JavaScript Date object
             }).filter(date => date !== null);
 
+            // Debugging: Log parsed dates
+            console.log('Parsed Dates:', parsedDates);
+
+            // Get the min and max dates from the parsed dates
+            const minDate = new Date(Math.min(...parsedDates));
+            const maxDate = new Date(Math.max(...parsedDates));
+
+            // Debugging: Log min and max dates
+            console.log('Min Date:', minDate);
+            console.log('Max Date:', maxDate);
+
+            // Inactivity Chart (Line Graph)
             inactivityChart = new Chart(document.getElementById('inactivityChart'), {
-                type: 'line',
+                type: 'line', // Changed to line chart
                 data: {
                     labels: parsedDates,
                     datasets: [{
                         label: 'Inactive Time (minutes)',
-                        data: stats.inactivity.data.slice(0, parsedDates.length),
-                        borderColor: '#00d1b2',
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#00d1b2'
+                        data: stats.inactivity.data,
+                        borderColor: '#00d1b2', // Line color
+                        backgroundColor: 'rgba(0, 209, 178, 0.1)', // Fill color under the line
+                        borderWidth: 2, // Line thickness
+                        pointRadius: 5, // Size of data points
+                        pointBackgroundColor: '#00d1b2', // Color of data points
+                        fill: true, // Fill the area under the line
+                        tension: 0.4, // Smoothness of the line
                     }]
                 },
                 options: {
@@ -278,9 +299,10 @@
                         x: {
                             type: 'time',
                             time: {
-                                unit: 'hour',
-                                tooltipFormat: 'yyyy-MM-dd HH:mm',
+                                unit: 'minute',
+                                tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
                                 displayFormats: {
+                                    minute: 'HH:mm',
                                     hour: 'HH:mm',
                                     day: 'yyyy-MM-dd'
                                 }
@@ -288,7 +310,9 @@
                             title: {
                                 display: true,
                                 text: 'Time'
-                            }
+                            },
+                            min: minDate, // Set the minimum time range
+                            max: maxDate, // Set the maximum time range
                         },
                         y: {
                             title: {
@@ -296,7 +320,7 @@
                                 text: 'Inactive Time (minutes)'
                             },
                             suggestedMin: 0,
-                            suggestedMax: Math.max(...stats.inactivity.data) * 1.2
+                            suggestedMax: Math.max(...stats.inactivity.data.filter(Number.isFinite)) * 1.2
                         }
                     },
                     plugins: {
@@ -314,18 +338,15 @@
             });
         });
 
-        // Function to expand a card
         function expandCard(card) {
             const expandedCard = document.getElementById('expandedCard');
             const overlay = document.getElementById('overlay');
 
-            // Clone the card content and append it to the expanded card
             expandedCard.innerHTML = card.innerHTML;
             expandedCard.appendChild(document.createElement('button')).className = 'close-btn';
             expandedCard.querySelector('.close-btn').innerText = 'X';
             expandedCard.querySelector('.close-btn').onclick = closeExpandedCard;
 
-            // Reinitialize the chart in the expanded card
             if (card.id === 'processes') {
                 new Chart(expandedCard.querySelector('canvas'), {
                     type: 'bar',
@@ -348,7 +369,7 @@
                 });
             } else if (card.id === 'inactivity') {
                 const parsedDates = stats.inactivity.labels.map(dateStr => {
-                    const dateTime = luxon.DateTime.fromFormat(dateStr, 'yyyy-MM-dd HH:mm');
+                    const dateTime = luxon.DateTime.fromFormat(dateStr, 'yyyy-MM-dd HH:mm:ss');
                     if (!dateTime.isValid) {
                         console.error(`Invalid date: ${dateStr}`);
                         return null;
@@ -356,18 +377,23 @@
                     return dateTime.toJSDate();
                 }).filter(date => date !== null);
 
+                const minDate = new Date(Math.min(...parsedDates));
+                const maxDate = new Date(Math.max(...parsedDates));
+
                 new Chart(expandedCard.querySelector('canvas'), {
-                    type: 'line',
+                    type: 'line', // Changed to line chart
                     data: {
                         labels: parsedDates,
                         datasets: [{
                             label: 'Inactive Time (minutes)',
-                            data: stats.inactivity.data.slice(0, parsedDates.length),
+                            data: stats.inactivity.data,
                             borderColor: '#00d1b2',
-                            fill: false,
-                            tension: 0.4,
+                            backgroundColor: 'rgba(0, 209, 178, 0.1)',
+                            borderWidth: 2,
                             pointRadius: 5,
-                            pointBackgroundColor: '#00d1b2'
+                            pointBackgroundColor: '#00d1b2',
+                            fill: true,
+                            tension: 0.4,
                         }]
                     },
                     options: {
@@ -377,9 +403,10 @@
                             x: {
                                 type: 'time',
                                 time: {
-                                    unit: 'hour',
-                                    tooltipFormat: 'yyyy-MM-dd HH:mm',
+                                    unit: 'minute',
+                                    tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
                                     displayFormats: {
+                                        minute: 'HH:mm',
                                         hour: 'HH:mm',
                                         day: 'yyyy-MM-dd'
                                     }
@@ -387,7 +414,9 @@
                                 title: {
                                     display: true,
                                     text: 'Time'
-                                }
+                                },
+                                min: minDate,
+                                max: maxDate,
                             },
                             y: {
                                 title: {
@@ -395,7 +424,7 @@
                                     text: 'Inactive Time (minutes)'
                                 },
                                 suggestedMin: 0,
-                                suggestedMax: Math.max(...stats.inactivity.data) * 1.2
+                                suggestedMax: Math.max(...stats.inactivity.data.filter(Number.isFinite)) * 1.2
                             }
                         },
                         plugins: {
@@ -413,22 +442,18 @@
                 });
             }
 
-            // Show the expanded card and overlay
             expandedCard.classList.add('active');
             overlay.classList.add('active');
         }
 
-        // Function to close the expanded card
         function closeExpandedCard() {
             const expandedCard = document.getElementById('expandedCard');
             const overlay = document.getElementById('overlay');
 
-            // Hide the expanded card and overlay
             expandedCard.classList.remove('active');
             overlay.classList.remove('active');
         }
 
-        // Add click event listeners to all cards
         document.querySelectorAll('.card').forEach(card => {
             card.addEventListener('click', () => {
                 expandCard(card);

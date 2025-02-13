@@ -43,9 +43,10 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         @log_type -> Logging type of the current message
         @log_params -> Logging message paramteres
     """
-    
+
     if log_type == MessageParser.CLIENT_MSG_AUTH:
-        mac, hostname = MessageParser.protocol_message_deconstruct(log_params.decode())
+        mac, hostname = MessageParser.protocol_message_deconstruct(log_params)
+        mac, hostname = mac.decode(), hostname.decode()
         
         client.set_address(mac)
         uid_data_base.insert_data(mac, hostname)
@@ -66,8 +67,11 @@ def get_client_stats(client_name : str) -> str:
     
     process_cnt = log_data_base.get_process_count(mac_addr)
     inactive_times = log_data_base.get_inactive_times(mac_addr)
-    words_per_min = log_data_base.get_wpm(mac_addr)
     
+    words_per_min = log_data_base.get_wpm(mac_addr, inactive_times)
+    words_per_min = words_per_min if words_per_min else 0
+    words_per_min = int(words_per_min)
+
     data = {
         "processes": {
                 "labels": [i[0].decode() for i in process_cnt],
@@ -75,7 +79,7 @@ def get_client_stats(client_name : str) -> str:
             },
         "inactivity": {
                 "labels": [i[0] for i in inactive_times],
-                "data" : [i[1] for i in inactive_times]
+                "data" : [int(i[1]) for i in inactive_times]
             },
         "wpm" : words_per_min if words_per_min else 0
     }
@@ -112,7 +116,7 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
     # If there is data to send to manager
-    if ret_msg and ret_msg_type:
+    if ret_msg or ret_msg_type:
         client.protocol_send(ret_msg_type, *ret_msg)
 
 def remove_disconnected_client(client : client) -> None:
