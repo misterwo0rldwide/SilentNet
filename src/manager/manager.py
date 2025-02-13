@@ -5,7 +5,7 @@
 #   Through requests to server which holds the data
 #
 #   Omer Kfir (C)
-import sys, webbrowser, os, signal
+import sys, webbrowser, os, signal, json
 from functools import wraps
 from flask import *
 
@@ -76,8 +76,7 @@ def submit_settings():
     employees_amount = request.form.get('employees_amount')
     safety = request.form.get('safety')
 
-    #manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
-    
+    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
     return redirect(url_for("employees_screen"))
  
 # Main screen - Gets current connected clients
@@ -86,10 +85,8 @@ def submit_settings():
 @check_screen_access
 def employees_screen():
 
-    #manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
-    #connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[1:]]
-
-    connected_clients = ["itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo", "itzik", "shlomo"]
+    manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+    connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]]
 
     return render_template("name_screen.html", name_list = connected_clients)
 
@@ -130,52 +127,9 @@ def loading_screen():
 @check_screen_access
 def stats_screen():
     client_name = request.args.get('client_name')
-
-    # Tmp data till actual data is written in proj
-    stats = {
-        "processes": {
-            "labels": ["Process A", "Process B", "Process C", "itzik", "shlomo", "ani"],
-            "data": [12, 19, 3, 4, 25, 0.5]
-        },
-        "inactivity": {
-            "labels": [
-                "2023-10-01 10:00",
-                "2023-10-01 10:05",
-                "2023-10-01 10:10",
-                "2023-10-01 10:15",
-                "2023-10-01 10:20",
-                "2023-10-01 10:25",
-                "2023-10-01 10:30",
-                "2023-10-01 10:35",
-                "2023-10-01 10:40",
-                "2023-10-01 10:45",
-                "2023-10-01 10:50",
-                "2023-10-01 10:55",
-                "2023-10-01 11:00",
-                "2023-10-01 11:02",
-                "2023-10-01 11:04",
-                "2023-10-01 11:06",
-                "2023-10-01 11:08",
-                "2023-10-01 11:10",
-                "2023-10-01 11:15",
-                "2023-10-01 11:20",
-                "2023-10-01 11:25",
-                "2023-10-01 11:30",
-                "2023-10-01 11:35",
-                "2023-10-01 11:40",
-                "2023-10-01 11:45",
-                "2023-10-01 11:50",
-                "2023-10-01 11:55",
-                "2023-10-01 12:00"
-            ],
-            "data": [
-                0.1, 0.3, 0.2, 0.4, 0.5, 0.7, 0.3, 0.6, 0.9, 1.2,
-                0.8, 1.1, 0.6, 0.4, 0.3, 0.7, 0.5, 1.3, 0.9, 1.5,
-                0.4, 0.7, 1.0, 0.5, 0.9, 1.2, 0.6, 0.8
-            ]
-        },
-        "wpm" : 5,
-    }
+    
+    manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
+    stats = json.loads(manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
 
     return render_template("stats_screen.html", stats=stats, client_name=client_name)
 
