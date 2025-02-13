@@ -5,7 +5,7 @@
 #
 #   Omer Kfir (C)
 
-import sys, threading, os
+import sys, threading, os, json
 
 # Append parent directory to be able to append protocol
 path = os.path.dirname(__file__)
@@ -26,6 +26,7 @@ clients_recv_event = threading.Event()
 clients_recv_lock = threading.Lock()
 
 max_clients = ... # Max amount of clients connected simultaneously to server
+safety = ... # Safety parameter (Certain amount of times server allow a client to send data which can not be decoded)
 
 # Data base object
 log_data_base = ...
@@ -51,8 +52,35 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
 
     else:
         log_data_base.insert_data(client.get_address(), log_type, log_params)
+
+def get_client_stats(client_name : str) -> str:
+    """
+        Gets all avaliable stats on a client
+        
+        INPUT: client_name
+        OUTPUT: String of all stats
+        
+        @client_name -> Json dumps of all the data
+    """
+    mac_addr = uid_data_base.get_mac_by_hostname(client_name)
     
-    print(log_type, log_params)
+    process_cnt = log_data_base.get_process_count(mac_addr)
+    inactive_times = log_data_base.get_inactive_times(mac_addr)
+    words_per_min = log_data_base.get_wpm(mac_addr)
+    
+    data = {
+        "processes": {
+                "labels": [i[0] for i in process_cnt],
+                "data": [i[1] for i in process_cnt]
+            },
+        "inactivity": {
+                "labels": [i[0] for i in inactive_times],
+                "data" : [i[1] for i in inactive_times]
+            },
+        "wpm" : words_per_min
+    }
+    
+    return json.dumps(data)
 
 def process_manager_request(client : client, msg_type : str, msg_params : bytes) -> None:
     """
@@ -65,19 +93,26 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         @msg_type -> Message type
         @msg_params -> Message paramteres
     """
+    global max_clients, safety
 
     ret_msg = ""
     ret_msg_type = ""
 
     # Buisnes logic of manager requets
-    if msg_type == MessageParser.MANAGER_GET_CLIENTS:
+    if msg_type == MessageParser.MANAGER_SND_SETTINGS:
+        max_clients, safety = MessageParser.protocol_message_deconstruct(msg_params)
+        
+    elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
         ret_msg = uid_data_base.get_clients()
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
-    else:
-        ...
+    elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
+        ret_msg = [get_client_stats(msg_params[0])] # Due to asterik when sending 
+        ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
-    client.protocol_send(ret_msg_type, *ret_msg)
+    # If there is data to send to manager
+    if ret_msg and ret_msg_type:
+        client.protocol_send(ret_msg_type, *ret_msg)
 
 def remove_disconnected_client(client : client) -> None:
     """
@@ -130,10 +165,10 @@ def manage_comm(client : client) -> None:
         msg_type = msg_type.decode()
 
         if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
-            process_client_data(client, msg_type, data[1])
+            process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
         
         elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-            process_manager_request(client, msg_type, data[1])
+            process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
         
     
     remove_disconnected_client(client)
@@ -185,12 +220,18 @@ def get_clients(server_comm : server, max_clients : int) -> None:
             print(f"Error accepting client: {e}")
 
 def main():
-    global max_clients, log_data_base, uid_data_base
+    global max_clients, safety, log_data_base, uid_data_base
+    
+    if len(sys.argv) != 3:
+        print(f"Wrong Usage: python server.py <Client max> <Safety>")
+    elif not (sys.argv[1].isnumeric() and sys.argv[2].isnumeric()):
+        print(f"Wrong Usage: Client max and safety params must be numerical")
+    
+    max_clients = int(sys.argv[1])
+    safety = int(sys.argv[2])
 
     log_data_base = UserLogsORM(path + "\\" + UserId.DB_NAME, UserLogsORM.USER_LOGS_NAME)
     uid_data_base = UserId(path + "\\" + UserId.DB_NAME, UserId.USER_ID_NAME)
-
-    max_clients = 5
 
     server_comm = server(max_clients)
     get_clients(server_comm, max_clients)
@@ -199,6 +240,9 @@ def main():
 
     log_data_base.delete_records_DB()
     log_data_base.close_DB()
+    
+    uid_data_base.delete_records_DB()
+    uid_data_base.close_DB()
 
     for client_thread, client_sock in clients_connected:
         client_sock.close()
