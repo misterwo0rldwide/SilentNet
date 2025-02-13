@@ -28,6 +28,7 @@ class MessageParser:
 
     # Manager commands
     MANAGER_MSG_SIG = "M"
+    MANAGER_SND_SETTINGS = "MST"
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
 
