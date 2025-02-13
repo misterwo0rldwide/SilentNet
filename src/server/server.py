@@ -45,7 +45,7 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
     """
     
     if log_type == MessageParser.CLIENT_MSG_AUTH:
-        mac, hostname = MessageParser.protocol_message_deconstruct(log_params)
+        mac, hostname = MessageParser.protocol_message_deconstruct(log_params.decode())
         
         client.set_address(mac)
         uid_data_base.insert_data(mac, hostname)
@@ -70,14 +70,14 @@ def get_client_stats(client_name : str) -> str:
     
     data = {
         "processes": {
-                "labels": [i[0] for i in process_cnt],
+                "labels": [i[0].decode() for i in process_cnt],
                 "data": [i[1] for i in process_cnt]
             },
         "inactivity": {
                 "labels": [i[0] for i in inactive_times],
                 "data" : [i[1] for i in inactive_times]
             },
-        "wpm" : words_per_min
+        "wpm" : words_per_min if words_per_min else 0
     }
     
     return json.dumps(data)
@@ -101,13 +101,14 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
     # Buisnes logic of manager requets
     if msg_type == MessageParser.MANAGER_SND_SETTINGS:
         max_clients, safety = MessageParser.protocol_message_deconstruct(msg_params)
+        max_clients, safety = int(max_clients), int(safety)
         
     elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
         ret_msg = uid_data_base.get_clients()
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
     elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
-        ret_msg = [get_client_stats(msg_params[0])] # Due to asterik when sending 
+        ret_msg = [get_client_stats(msg_params.decode())] # Due to asterik when sending 
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
     # If there is data to send to manager
@@ -168,7 +169,7 @@ def manage_comm(client : client) -> None:
             process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
         
         elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-            process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
+            process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else "")
         
     
     remove_disconnected_client(client)
@@ -224,11 +225,13 @@ def main():
     
     if len(sys.argv) != 3:
         print(f"Wrong Usage: python server.py <Client max> <Safety>")
-    elif not (sys.argv[1].isnumeric() and sys.argv[2].isnumeric()):
-        print(f"Wrong Usage: Client max and safety params must be numerical")
+        #return
+    #if not (sys.argv[1].isnumeric() and sys.argv[2].isnumeric()):
+    #    print(f"Wrong Usage: Client max and safety params must be numerical")
+        #return
     
-    max_clients = int(sys.argv[1])
-    safety = int(sys.argv[2])
+    max_clients = 5 #int(sys.argv[1])
+    safety = 5 #int(sys.argv[2])
 
     log_data_base = UserLogsORM(path + "\\" + UserId.DB_NAME, UserLogsORM.USER_LOGS_NAME)
     uid_data_base = UserId(path + "\\" + UserId.DB_NAME, UserId.USER_ID_NAME)

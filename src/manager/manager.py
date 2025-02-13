@@ -76,7 +76,7 @@ def submit_settings():
     employees_amount = request.form.get('employees_amount')
     safety = request.form.get('safety')
 
-    manager_server_sock.protocol_send(MessageParser.MANAGER_START_COMM, employees_amount, safety)
+    manager_server_sock.protocol_send(MessageParser.MANAGER_SND_SETTINGS, employees_amount, safety)
     return redirect(url_for("employees_screen"))
  
 # Main screen - Gets current connected clients
@@ -157,7 +157,6 @@ def main():
     direct = ""
     
     connected = attemp_server_connection()
-    connected = True
     if not connected:
         direct = "/loading"
     

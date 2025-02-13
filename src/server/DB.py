@@ -129,7 +129,7 @@ class UserLogsORM (DBHandler):
             @mac: MAC address of user's computer
         """
 
-        command = f"SELECT data, COUNT(*) FROM {self.table_name} WHERE type = '{CLIENT_PROCESS_OPEN}' AND mac = ? GROUP BY data;"
+        command = f"SELECT data, COUNT(*) FROM {self.table_name} WHERE type = '{MessageParser.CLIENT_PROCESS_OPEN}' AND mac = ? GROUP BY data;"
         return self.commit(command, mac)
     
     def get_inactive_times(self, mac : str) -> list[tuple[datetime, int]]:
@@ -146,16 +146,15 @@ class UserLogsORM (DBHandler):
             SELECT time_went_idle, 
                    idle_seconds
             FROM (
-                SELECT {mac}, 
+                SELECT mac, 
                     date AS time_went_idle, 
                     (julianday(LEAD(date) OVER (PARTITION BY mac ORDER BY date)) - julianday(date)) * 86400 AS idle_seconds
                 FROM logs
-                WHERE type = '{CLIENT_INPUT_EVENT}'
+                WHERE type = '{MessageParser.CLIENT_INPUT_EVENT}' AND mac = ?
             ) AS subquery
-            WHERE idle_seconds > 5 * 60
-            ORDER BY idle_seconds DESC;
+            WHERE idle_seconds > 5;
         """
-        return self.commit(command)
+        return self.commit(command, mac)
     
     def get_wpm(self, mac : str) -> int:
         """
@@ -167,37 +166,13 @@ class UserLogsORM (DBHandler):
             @mac: MAC address of user's computer
         """
 
+        # Reduce time user went idle
+        total_inactive = sum(i[1] for i in self.get_inactive_times(mac))
         command = f"""
-            WITH keystrokes AS (
-            SELECT date, 
-                data,
-                LAG(date) OVER (PARTITION BY mac ORDER BY date) AS prev_date
-            FROM logs
-            WHERE type = 'CLIENT_INPUT_EVENT' AND mac = ?
-        ),
-        active_typing AS (
-            SELECT date, 
-                data,
-                prev_date,
-                (julianday(date) - julianday(prev_date)) * 86400 AS time_diff
-            FROM keystrokes
-            WHERE prev_date IS NOT NULL AND time_diff < 5 -- Exclude inactivity (e.g., >5 seconds)
-        ),
-        spaces_count AS (
-            SELECT COUNT(*) AS spaces
-            FROM active_typing
-            WHERE data = 28 -- Count only spaces
-        ),
-        total_typing_time AS (
-            SELECT SUM(time_diff) AS total_time
-            FROM active_typing
-        )
-        SELECT spaces,
-            total_time,
-            (spaces / (total_time / 60)) AS wpm -- Words per minute
-        FROM spaces_count, total_typing_time;
+            SELECT COUNT(CASE WHEN data LIKE '%28' THEN 1 END) / (((julianday(MAX(date)) - julianday(MIN(date))) * 86400 - ?) / 60) FROM logs
+            WHERE type = 'CIE' AND mac = ?;
         """
-        return self.commit(command)[0][0]
+        return self.commit(command, total_inactive, mac)[0][0]
 
 class UserId (DBHandler):
 
