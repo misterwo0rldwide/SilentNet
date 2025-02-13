@@ -33,7 +33,8 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   char msg_buf[BUFFER_SIZE];
   size_t msg_length;
 
-  if (!current)
+  // Check for validity and also not sending kernel process
+  if (!current || !current->mm || (current->flags & PF_KTHREAD))
     return 0;
 
   msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
@@ -49,7 +50,8 @@ static int handler_pre_do_exit(struct kprobe *kp, struct pt_regs *regs) {
   char msg_buf[BUFFER_SIZE];
   size_t msg_length;
 
-  if (!current)
+  // Check for validily and also not sending kernel process
+  if (!current || !current->mm || (current->flags & PF_KTHREAD))
     return 0;
 
   msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
