@@ -10,6 +10,7 @@ from typing import Optional, Union
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
+from random import randint
 
 __author__ = "Omer Kfir"
 
@@ -43,7 +44,7 @@ class DiffieHellman:
             OUTPUT: Private key (int)
         """
 
-        return int.from_bytes(get_random_bytes(4), byteorder='big') % self.prime
+        return randint(2, 20)
 
     def get_public_key(self) -> int:
         """
@@ -70,7 +71,7 @@ class DiffieHellman:
 
 class AESHandler:
     """
-        Handles AES encryption and decryption in ECB mode
+        Handles AES encryption and decryption in CBC mode
     """
 
     def __init__(self, key: Optional[bytes] = None):
@@ -89,7 +90,7 @@ class AESHandler:
 
     def encrypt(self, data: Union[bytes, str]) -> bytes:
         """
-            Encrypts data using AES in ECB mode
+            Encrypts data using AES in CBC mode
 
             INPUT: data
             OUTPUT: Encrypted data (bytes)
@@ -99,23 +100,29 @@ class AESHandler:
         if isinstance(data, str):
             data = data.encode()
 
-        # Pad the data to match the block size
-        padded_data = pad(data, AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_ECB)
-        return cipher.encrypt(padded_data)
+        iv = get_random_bytes(AES.block_size)
+        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        
+        cipher_text = cipher.encrypt(pad(data, AES.block_size))
+
+        return iv + cipher_text
 
     def decrypt(self, encrypted_data: bytes) -> bytes:
         """
-            Decrypts data using AES in ECB mode
+            Decrypts data using AES in CBC mode
 
             INPUT: encrypted_data
             OUTPUT: Decrypted data (bytes)
 
-            @encrypted_data -> Data to decrypt (bytes)
+            @encrypted_data -> Data to decrypt (bytes), first AES.block_size bytes are for iv
         """
-        cipher = AES.new(self.key, AES.MODE_ECB)
-        padded_data = cipher.decrypt(encrypted_data)
-        return unpad(padded_data, AES.block_size)
+        if type(encrypted_data) is not bytes:
+            encrypted_data = encrypted_data.encode()
+
+        decrypt_cipher = AES.new(self.key, AES.MODE_CBC, encrypted_data[:AES.block_size])
+        plain_text = decrypt_cipher.decrypt(encrypted_data[AES.block_size:])
+
+        return unpad(plain_text, AES.block_size)
 
 
 class EncryptionHandler:
