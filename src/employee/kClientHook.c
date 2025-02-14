@@ -37,6 +37,10 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   if (!current || !current->mm || (current->flags & PF_KTHREAD))
     return 0;
 
+  // Check for processes which activated by user
+  if (current_uid().val == 0)
+    return 0;
+
   msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
                                MSG_PROCESS_OPEN, current->comm);
   if (msg_length > 0)
@@ -52,6 +56,10 @@ static int handler_pre_do_exit(struct kprobe *kp, struct pt_regs *regs) {
 
   // Check for validily and also not sending kernel process
   if (!current || !current->mm || (current->flags & PF_KTHREAD))
+    return 0;
+
+  // Check for processes which activated by user
+  if (current_uid().val == 0)
     return 0;
 
   msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
