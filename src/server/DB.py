@@ -129,8 +129,8 @@ class UserLogsORM (DBHandler):
             @mac: MAC address of user's computer
         """
 
-        command = f"SELECT data, COUNT(*) FROM {self.table_name} WHERE type = '{MessageParser.CLIENT_PROCESS_OPEN}' AND mac = ? GROUP BY data;"
-        return self.commit(command, mac)
+        command = f"SELECT data, count FROM {self.table_name} WHERE type = ? AND mac = ?;"
+        return self.commit(command, MessageParser.CLIENT_PROCESS_OPEN, mac)
     
     def get_inactive_times(self, mac : str) -> list[tuple[datetime, int]]:
         """
@@ -142,21 +142,10 @@ class UserLogsORM (DBHandler):
             @mac: MAC address of user's computer
         """
 
-        command = f"""
-            SELECT time_went_idle, 
-                   idle_seconds
-            FROM (
-                SELECT mac, 
-                    date AS time_went_idle, 
-                    (julianday(LEAD(date) OVER (PARTITION BY mac ORDER BY date)) - julianday(date)) * 86400 AS idle_seconds
-                FROM {self.table_name}
-                WHERE type = '{MessageParser.CLIENT_INPUT_EVENT}' AND mac = ?
-            ) AS subquery
-            WHERE idle_seconds > 5;
-        """
-        return self.commit(command, mac)
+        command = f"SELECT data, count FROM {self.table_name} WHERE type = ? AND mac = ?;"
+        return self.commit(command, MessageParser.CLIENT_LAST_INPUT_EVENT, mac)
     
-    def get_wpm(self, mac : str, inactive : list[tuple[datetime, int]] = None) -> int:
+    def get_wpm(self, mac : str) -> int:
         """
             Calculates the average wpm the user does while excluding inactive times
 
@@ -164,16 +153,29 @@ class UserLogsORM (DBHandler):
             OUTPUT: Integer
 
             @mac: MAC address of user's computer
-            @inactive: If user already calcualted inactive times
         """
 
-        # Reduce time user went idle
-        total_inactive = sum(i[1] for i in (self.get_inactive_times(mac) if not inactive else inactive))
-        command = f"""
-            SELECT COUNT(CASE WHEN data LIKE '%57' THEN 1 END) / (((julianday(MAX(date)) - julianday(MIN(date))) * 86400 - ?) / 60) FROM logs
-            WHERE type = 'CIE' AND mac = ?;
-        """
-        return self.commit(command, total_inactive, mac)[0][0]
+        # Calculate total inactive time
+        total_inactive = sum(i[1] for i in self.get_inactive_times(mac))
+
+        # Get word count
+        command = f"SELECT count FROM {self.table_name} WHERE type = ? AND data LIKE '%57' AND mac = ?;"
+        words_cnt = self.commit(command, MessageParser.CLIENT_INPUT_EVENT, mac)
+        words_cnt = words_cnt[0][0] if words_cnt else 0  # Extract value safely
+
+        # Get first input timestamp
+        command = f"SELECT data FROM {self.table_name} WHERE type = ? AND mac = ? LIMIT 1;"
+        first_input = self.commit(command, MessageParser.CLIENT_FIRST_INPUT_EVENT, mac)
+        first_input = first_input[0][0] if first_input else None
+
+        if not first_input:
+            return 0  # No input data, return 0 WPM
+
+        # Calculate active time in minutes
+        active_time = ((datetime.now() - datetime.strptime(first_input, "%Y-%m-%d %H:%M:%S")).total_seconds() - total_inactive) / 60
+        active_time = max(active_time, 1)  # Prevent division by zero
+
+        return words_cnt // active_time
 
 class UserId (DBHandler):
 

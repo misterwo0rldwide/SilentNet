@@ -26,6 +26,10 @@ class MessageParser:
     CLIENT_PROCESS_CLOSE = "CPC"
     CLIENT_INPUT_EVENT = "CIE"
 
+    # Not used in communication only in DB
+    CLIENT_LAST_INPUT_EVENT = "CLE"
+    CLIENT_FIRST_INPUT_EVENT = "CFE"
+
     # Manager commands
     MANAGER_MSG_SIG = "M"
     MANAGER_SND_SETTINGS = "MST"

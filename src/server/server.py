@@ -44,6 +44,7 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         @log_params -> Logging message paramteres
     """
 
+    # Mac and user auth
     if log_type == MessageParser.CLIENT_MSG_AUTH:
         mac, hostname = MessageParser.protocol_message_deconstruct(log_params)
         mac, hostname = mac.decode(), hostname.decode()
@@ -51,6 +52,7 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         client.set_address(mac)
         uid_data_base.insert_data(mac, hostname)
 
+    # Logging data
     else:
         log_data_base.insert_data(client.get_address(), log_type, log_params)
 
@@ -67,14 +69,12 @@ def get_client_stats(client_name : str) -> str:
     
     process_cnt = log_data_base.get_process_count(mac_addr)
     inactive_times = log_data_base.get_inactive_times(mac_addr)
-    
     words_per_min = log_data_base.get_wpm(mac_addr, inactive_times)
-    words_per_min = words_per_min if words_per_min else 0
-    words_per_min = int(words_per_min)
 
+    # Insert data into json format for manager
     data = {
         "processes": {
-                "labels": [i[0].decode() for i in process_cnt],
+                "labels": [i[0] for i in process_cnt],
                 "data": [i[1] for i in process_cnt]
             },
         "inactivity": {
@@ -237,9 +237,10 @@ def main():
     max_clients = 5 #int(sys.argv[1])
     safety = 5 #int(sys.argv[2])
 
-    log_data_base = UserLogsORM(path + "\\" + UserId.DB_NAME, UserLogsORM.USER_LOGS_NAME)
-    uid_data_base = UserId(path + "\\" + UserId.DB_NAME, UserId.USER_ID_NAME)
-
+    db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
+    log_data_base = UserLogsORM(db_path, UserLogsORM.USER_LOGS_NAME)
+    uid_data_base = UserId(db_path, UserId.USER_ID_NAME)
+    
     server_comm = server(max_clients)
     get_clients(server_comm, max_clients)
 
