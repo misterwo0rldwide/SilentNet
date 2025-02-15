@@ -29,6 +29,7 @@ class MessageParser:
     # Not used in communication only in DB
     CLIENT_LAST_INPUT_EVENT = "CLE"
     CLIENT_FIRST_INPUT_EVENT = "CFE"
+    CLIENT_INACTIVE_EVENT = "CIN"
 
     # Manager commands
     MANAGER_MSG_SIG = "M"

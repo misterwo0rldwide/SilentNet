@@ -50,7 +50,11 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         mac, hostname = mac.decode(), hostname.decode()
         
         client.set_address(mac)
-        uid_data_base.insert_data(mac, hostname)
+        logged = uid_data_base.insert_data(mac, hostname)
+
+        # Set up DB for client
+        if not logged:
+            log_data_base.client_setup_db(client.get_address())
 
     # Logging data
     else:
@@ -68,20 +72,20 @@ def get_client_stats(client_name : str) -> str:
     mac_addr = uid_data_base.get_mac_by_hostname(client_name)
     
     process_cnt = log_data_base.get_process_count(mac_addr)
-    inactive_times = log_data_base.get_inactive_times(mac_addr)
-    words_per_min = log_data_base.get_wpm(mac_addr, inactive_times)
+    inactive_times, inactive_after_last = log_data_base.get_inactive_times(mac_addr)
+    words_per_min = int(log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
 
     # Insert data into json format for manager
     data = {
         "processes": {
-                "labels": [i[0] for i in process_cnt],
+                "labels": [i[0].decode() for i in process_cnt],
                 "data": [i[1] for i in process_cnt]
             },
         "inactivity": {
                 "labels": [i[0] for i in inactive_times],
                 "data" : [int(i[1]) for i in inactive_times]
             },
-        "wpm" : words_per_min if words_per_min else 0
+        "wpm" : words_per_min
     }
     
     return json.dumps(data)

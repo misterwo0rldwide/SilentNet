@@ -101,10 +101,93 @@ class UserLogsORM (DBHandler):
                 cls._instance.__init__(db_name, table_name)
             return cls._instance
     
+    
+    def client_setup_db(self, mac : str) -> None:
+        """
+            Writes basic logs that need to be for every client when connected
+            Writes when client first logged in (Also writes last client input event with the same time)
+            Writes an empty record of inactive times
+
+            INPUT: mac
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+        """
+
+        cur_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # First log of client
+        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,?);"
+        self.commit(command, mac, MessageParser.CLIENT_FIRST_INPUT_EVENT, cur_time)
+
+        # "Last" log of client (it's not really the last time, it's just a record for next when client logs again)
+        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,?);"
+        self.commit(command, mac, MessageParser.CLIENT_LAST_INPUT_EVENT, cur_time)
+
+        # Empty record of inactive times
+        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,'');"
+        self.commit(command, mac, MessageParser.CLIENT_INACTIVE_EVENT)
+
+    
+    def __check_inactive(self, mac : str) -> tuple[str, int]:
+        """
+            Checks if client is currently inactive
+
+            INPUT: mac
+            OUTPUT: Tuple conists of last datetime in string format client was active and the amount of minutes currently inactive
+
+            @mac: MAC address of user's computer
+        """
+
+        cur_time = datetime.now()
+
+        command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
+        date_str = self.commit(command, mac, MessageParser.CLIENT_LAST_INPUT_EVENT)[0][0]
+        
+        date = datetime.strptime(date_str , "%Y-%m-%d %H:%M:%S")
+        inactive_time = int((cur_time - date).total_seconds() // 60)
+
+        # Inactive time is considered above five minutes
+        if inactive_time > 5:
+            return date_str, inactive_time
+        
+        return None, None
+
+    def __update_last_input(self, mac : str) -> None:
+        """
+            Updates last time user logged input event
+
+            INPUT: mac
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+        """
+
+        # Check if client is inactive until now, if so log it
+        date, inactive_time = self.__check_inactive(mac)
+        if date:
+
+            # Get string of inactive times
+            # String format -> datetime of inactive, inactive minutes
+            # Example: 2025-10-10 20:20:20,10~2025-10-10 20:20:30,7~
+            command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
+            data = self.commit(command, mac, MessageParser.CLIENT_INACTIVE_EVENT)[0][0]
+
+            data += f"{date},{inactive_time}~"
+            command = f"UPDATE {self.table_name} SET data = ? WHERE mac = ? AND type = ?;"
+
+            self.commit(command, data, mac, MessageParser.CLIENT_INACTIVE_EVENT)
+
+        command = f"UPDATE {self.table_name} SET data = ? WHERE mac = ? AND type = ?;"
+
+        cur_time = datetime.now()
+        cur_time = cur_time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        self.commit(command, cur_time, mac, MessageParser.CLIENT_LAST_INPUT_EVENT)
+
     def insert_data(self, mac: str, data_type: str, data: bytes) -> None:
         """
-            Insert data to SQL table
-        
+            Insert data to SQL table, if record already exists incement its counter
 
             INPUT: mac, data_type, data
             OUTPUT: None
@@ -114,10 +197,24 @@ class UserLogsORM (DBHandler):
             @data: Bytes of data
         """
 
-        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        command = f"INSERT INTO {self.table_name} (mac, type, data, date) VALUES (?,?,?,?);"
-        self.commit(command, mac, data_type, data, date)
-    
+        command = f"SELECT count FROM {self.table_name} WHERE mac = ? AND type = ? AND data = ?;"
+        count = self.commit(command, mac, data_type, data)
+
+        # If got count -> count exists -> row exists
+        if count:
+            count = count[0][0] + 1
+            command = f"UPDATE {self.table_name} SET count = ? WHERE mac = ? AND type = ? AND data = ?;"
+        
+            self.commit(command, count, mac, data_type, data)
+        else:
+            command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,?);"
+        
+            self.commit(command, mac, data_type, data)
+        
+        # Check if it is an input event
+        if data_type == MessageParser.CLIENT_INPUT_EVENT:
+            self.__update_last_input(mac)
+
     # Statistics done with DB
     def get_process_count(self, mac : str) -> list[tuple[str, int]]:
         """
@@ -137,42 +234,54 @@ class UserLogsORM (DBHandler):
             Calculates idle times of user
 
             INPUT: mac
-            OUTPUT: List of tuples of the datetime the user went idle and the time of idleness
+            OUTPUT: List of List of the datetime the user went idle and the time of idleness
 
             @mac: MAC address of user's computer
         """
 
-        command = f"SELECT data, count FROM {self.table_name} WHERE type = ? AND mac = ?;"
-        return self.commit(command, MessageParser.CLIENT_LAST_INPUT_EVENT, mac)
+        # Check if currently inactive
+        date, inactive_time = self.__check_inactive(mac)
+
+        command = f"SELECT data FROM {self.table_name} WHERE type = ? AND mac = ?;"
+        dates = self.commit(command, MessageParser.CLIENT_INACTIVE_EVENT, mac)[0][0]
+
+        if date:
+            dates += f"{date},{inactive_time}"
+
+        dates = dates.split("~")
+        return [i.split(",") for i in dates], True if date else False
     
-    def get_wpm(self, mac : str) -> int:
+    def get_wpm(self, mac : str, inactive_times : list[tuple[datetime, int]], inactive_after_last : bool) -> int:
         """
             Calculates the average wpm the user does while excluding inactive times
 
             INPUT: mac, inactive
-            OUTPUT: Integer
+            OUTPUT: Integer, list[tuple[datetime, int]], bool
 
             @mac: MAC address of user's computer
+            @inactive_times: Pre calculated inactive times of user
+            @inactive_after_last: Boolean to indicate if inactive times include time after last logged input event
         """
 
-        # Calculate total inactive time
-        total_inactive = sum(i[1] for i in self.get_inactive_times(mac))
+        # Calculate total inactive time in minutes
+        if inactive_after_last:
+            inactive_times = inactive_times[:-1]
+        
+        total_inactive = sum(int(i[1]) for i in inactive_times)
 
-        # Get word count
-        command = f"SELECT count FROM {self.table_name} WHERE type = ? AND data LIKE '%57' AND mac = ?;"
+        # Get word count, 57 is the translation for space char in input_event in linux
+        # Checks for data which has space char in it
+        command = f"SELECT count FROM {self.table_name} WHERE type = ? AND data LIKE '%57%' AND mac = ?;"
         words_cnt = self.commit(command, MessageParser.CLIENT_INPUT_EVENT, mac)
         words_cnt = words_cnt[0][0] if words_cnt else 0  # Extract value safely
 
         # Get first input timestamp
-        command = f"SELECT data FROM {self.table_name} WHERE type = ? AND mac = ? LIMIT 1;"
-        first_input = self.commit(command, MessageParser.CLIENT_FIRST_INPUT_EVENT, mac)
-        first_input = first_input[0][0] if first_input else None
-
-        if not first_input:
-            return 0  # No input data, return 0 WPM
+        command = f"SELECT data FROM {self.table_name} WHERE type = ? AND mac = ?;"
+        first_input = datetime.strptime(self.commit(command, MessageParser.CLIENT_FIRST_INPUT_EVENT, mac)[0][0], "%Y-%m-%d %H:%M:%S")
+        last_input = datetime.strptime(self.commit(command, MessageParser.CLIENT_LAST_INPUT_EVENT, mac)[0][0], "%Y-%m-%d %H:%M:%S")
 
         # Calculate active time in minutes
-        active_time = ((datetime.now() - datetime.strptime(first_input, "%Y-%m-%d %H:%M:%S")).total_seconds() - total_inactive) / 60
+        active_time = ((last_input - first_input).total_seconds() - total_inactive * 60) / 60
         active_time = max(active_time, 1)  # Prevent division by zero
 
         return words_cnt // active_time
@@ -199,19 +308,40 @@ class UserId (DBHandler):
                 cls._instance.__init__(db_name, table_name)
             return cls._instance
     
-    def insert_data(self, mac: str, hostname : str):
+    def insert_data(self, mac: str, hostname : str) -> bool:
         """
-            Insert data to SQL table
+            Insert data to SQL table, checks if mac already in use or hostname
+            If mac already in use then do not insert
+            If hostname then change the hostname and insert
 
             INPUT: mac, hostname
-            OUTPUT: None
+            OUTPUT: Boolean value to indicate if user already logged in
 
             @mac: MAC address of user's computer
             @hostname: User's computer hostname
         """
 
+        command = f"SELECT hostname FROM {self.table_name} WHERE mac = ?;"
+        output = self.commit(command, mac)
+        
+        # If list of result not empty then mac already exists in table
+        if output:
+            print(f"{mac} -> Already logged in")
+            return True
+
+        # We will count the amount of times the hostname shows in the table
+        # In order for having unique names for manager to being able to differnce
+        # Between clients
+
+        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE hostname LIKE ? || '%';"
+        output = self.commit(command, hostname)[0][0]
+
+        if output > 0:
+            hostname = f"{hostname}{output}"
+        
         command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?,?);"
         self.commit(command, mac, hostname)
+        return False
     
     def update_name(self, mac: str, name : str):
         """
