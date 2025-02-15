@@ -241,9 +241,9 @@ def main():
     max_clients = 5 #int(sys.argv[1])
     safety = 5 #int(sys.argv[2])
 
-    db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
-    log_data_base = UserLogsORM(db_path, UserLogsORM.USER_LOGS_NAME)
-    uid_data_base = UserId(db_path, UserId.USER_ID_NAME)
+    conn, cursor = DBHandler.connect_DB(os.path.join(os.path.dirname(__file__), UserId.DB_NAME))
+    log_data_base = UserLogsORM(conn, cursor, UserLogsORM.USER_LOGS_NAME)
+    uid_data_base = UserId(conn, cursor, UserId.USER_ID_NAME)
     
     server_comm = server(max_clients)
     get_clients(server_comm, max_clients)
@@ -251,10 +251,9 @@ def main():
     server_comm.close()
 
     log_data_base.delete_records_DB()
-    log_data_base.close_DB()
-    
     uid_data_base.delete_records_DB()
-    uid_data_base.close_DB()
+    
+    DBHandler.close_DB(conn, cursor)
 
     for client_thread, client_sock in clients_connected:
         client_sock.close()

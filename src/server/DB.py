@@ -14,34 +14,65 @@ class DBHandler():
     """
         Base class for database handling
     """
+
+    DB_NAME = "server_db.db"
     
-    def __init__(self, db_name: str, table_name: str):
+    def __init__(self, conn, cursor, table_name: str):
         """
-            Initialize database connection
-        
-            INPUT: db_name, table_name
-            OUTPUT: None
+        Initialize database connection using an existing connection and cursor.
 
-            @db_name: Name of the database
-            @table_name: Name of the primary table
+        INPUT: conn, cursor, table_name
+        OUTPUT: None
+
+        @conn: Existing SQLite connection object
+        @cursor: Existing SQLite cursor object
+        @table_name: Name of the primary table
         """
-
-        self.conn = sqlite3.connect(db_name, check_same_thread=False)
-        self.cursor = self.conn.cursor()
+        self.conn = conn
+        self.cursor = cursor
         self.table_name = table_name
-        self.db_name = db_name
-
         self._lock = threading.Lock()
-    
-    def close_DB(self):
+
+        # Create tables if they do not exist
+        if table_name.endswith("logs"):
+            self.commit('''
+            CREATE TABLE IF NOT EXISTS logs (
+                mac TEXT NOT NULL,
+                type TEXT NOT NULL,
+                data BLOB NOT NULL,
+                count NUMERIC NOT NULL DEFAULT 1
+            )
+            ''')
+        elif table_name.endswith("uid"):
+            self.commit('''
+            CREATE TABLE IF NOT EXISTS uid (
+                mac TEXT NOT NULL UNIQUE,
+                hostname TEXT NOT NULL UNIQUE
+            )
+            ''')
+
+    @staticmethod
+    def connect_DB(db_name : str) -> tuple:
+        """
+            Establish connection with DB
+
+            INPUT: Str
+            OUTPUT: tuple
+        """
+
+        conn = sqlite3.connect(db_name, check_same_thread=False)
+        return conn, conn.cursor()
+
+    @staticmethod
+    def close_DB(cursor, conn):
         """
             Closes connection to database
 
-            INPUT: None
+            INPUT: cursor, conn
             OUTPUT: None
         """
-        self.cursor.close()
-        self.conn.close()
+        cursor.close()
+        conn.close()
     
     def delete_records_DB(self):
         """
@@ -81,26 +112,23 @@ class UserLogsORM (DBHandler):
         Singleton implementation of UserLogsORM inheriting from DBHandler
     """
 
-    DB_NAME = "server_db.db"
     USER_LOGS_NAME = "logs"
     
     _lock = threading.Lock()
     _instance = None
     
-    def __new__(cls, db_name: str, table_name: str):
+    def __new__(cls, conn, cursor, table_name: str):
         """
-            Ensure singleton instance
+            Ensure singleton instance and initialize with existing connection and cursor.
 
-            INPUT: None
+            INPUT: conn, cursor, table_name
             OUTPUT: None
         """
-        
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(UserLogsORM, cls).__new__(cls)
-                cls._instance.__init__(db_name, table_name)
+                cls._instance.__init__(conn, cursor, table_name)
             return cls._instance
-    
     
     def client_setup_db(self, mac : str) -> None:
         """
@@ -288,24 +316,22 @@ class UserLogsORM (DBHandler):
 
 class UserId (DBHandler):
 
-    DB_NAME = "server_db.db"
     USER_ID_NAME = "uid"
 
     _lock = threading.Lock()
     _instance = None
     
-    def __new__(cls, db_name: str, table_name: str):
+    def __new__(cls, conn, cursor, table_name: str):
         """
-            Ensure singleton instance
+            Ensure singleton instance and initialize with existing connection and cursor.
 
-            INPUT: None
+            INPUT: conn, cursor, table_name
             OUTPUT: None
         """
-        
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(UserId, cls).__new__(cls)
-                cls._instance.__init__(db_name, table_name)
+                cls._instance.__init__(conn, cursor, table_name)
             return cls._instance
     
     def insert_data(self, mac: str, hostname : str) -> bool:
