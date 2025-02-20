@@ -27,6 +27,16 @@
             margin-bottom: 40px;
             filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.6)); /* Dark shadow for a better blend */
             mix-blend-mode: lighten; /* This helps blend the logo into the background */
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
         }
 
         /* Password input styling */
@@ -99,6 +109,22 @@
             color: #ff4444;
             font-size: 0.9rem;
             display: none; /* Hidden by default */
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(-10px);
+            }
+            50% {
+                transform: translateX(10px);
+            }
+            75% {
+                transform: translateX(-10px);
+            }
         }
 
         /* Background animation */
@@ -125,6 +151,15 @@
             background-size: 20px 20px;
             animation: moveBackground 10s infinite linear;
             z-index: -1;
+        }
+
+        /* Additional glow effect for inputs and buttons */
+        .password-input, .submit-button, .exit-btn {
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+
+        .password-input:focus, .submit-button:hover, .exit-btn:hover {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
         }
     </style>
 </head>

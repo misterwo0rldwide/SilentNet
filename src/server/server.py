@@ -252,7 +252,7 @@ def get_clients(server_comm : server, max_clients : int) -> None:
 def main():
     global max_clients, safety, password, log_data_base, uid_data_base
     
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(f"Wrong Usage: python server.py <Client max> <Safety> <password>")
         #return
     #if not (sys.argv[1].isnumeric() and sys.argv[2].isnumeric()):

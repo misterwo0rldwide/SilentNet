@@ -63,6 +63,11 @@ def check_screen_access(f):
 @check_screen_access
 def start_screen():
     password_incorrect = request.args.get('password_incorrect', 'false')
+
+    # If password_incorrect is true it means user already been here so check for connection
+    if password_incorrect and not attemp_server_connection():
+        return redirect(url_for("loading_screen"))
+
     return render_template("opening_screen.html", password_incorrect=password_incorrect)
 
 
@@ -75,7 +80,7 @@ def check_password():
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
     
-    return redirect(url_for("/", password_incorrect='true'))
+    return redirect(url_for("start_screen", password_incorrect='true'))
 
 # Settings screen
 @web_app.route("/settings")
@@ -116,7 +121,7 @@ def attemp_server_connection() -> bool:
     connection_status = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
     
     if connection_status:
-        manager_server_sock.set_timeout(0.5)
+        manager_server_sock.set_timeout(0.1)
     
     return connection_status
 
