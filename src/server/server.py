@@ -120,7 +120,7 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         ret_msg = [get_client_stats(msg_params.decode())] # Due to asterik when sending 
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
-    elif msg_params == MessageParser.MANAGER_MSG_PASSWORD:
+    elif msg_type == MessageParser.MANAGER_MSG_PASSWORD:
         ret_msg = [] # Not any params to send
         
         # Check wether password is correct
@@ -250,7 +250,7 @@ def get_clients(server_comm : server, max_clients : int) -> None:
             print(f"Error accepting client: {e}")
 
 def main():
-    global max_clients, safety, log_data_base, uid_data_base
+    global max_clients, safety, password, log_data_base, uid_data_base
     
     if len(sys.argv) != 3:
         print(f"Wrong Usage: python server.py <Client max> <Safety> <password>")
