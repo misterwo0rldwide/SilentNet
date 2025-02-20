@@ -27,6 +27,7 @@ clients_recv_lock = threading.Lock()
 
 max_clients = ... # Max amount of clients connected simultaneously to server
 safety = ... # Safety parameter (Certain amount of times server allow a client to send data which can not be decoded)
+password = ... # Password for managers when trying to connect in order for a manager to be valid
 
 # Data base object
 log_data_base = ...
@@ -119,9 +120,19 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         ret_msg = [get_client_stats(msg_params.decode())] # Due to asterik when sending 
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
+    elif msg_params == MessageParser.MANAGER_MSG_PASSWORD:
+        ret_msg = [] # Not any params to send
+        
+        # Check wether password is correct
+        ret_msg_type = MessageParser.MANAGER_VALID_CONN if password == msg_params.decode() else MessageParser.MANAGER_INVALID_CONN
+    
     # If there is data to send to manager
     if ret_msg or ret_msg_type:
         client.protocol_send(ret_msg_type, *ret_msg)
+    
+    # If manager did not enter correct password disconnect it
+    if ret_msg_type == MessageParser.MANAGER_INVALID_CONN:
+        remove_disconnected_client(client)
 
 def remove_disconnected_client(client : client) -> None:
     """
@@ -132,6 +143,10 @@ def remove_disconnected_client(client : client) -> None:
         
         @client -> Protocol client object
     """
+    
+    # If client even exists
+    if not client:
+        return
     
     # Search for client thread in list
     # Lock even when searching since list can change by the time finished
@@ -148,6 +163,7 @@ def remove_disconnected_client(client : client) -> None:
                 break
 
     client.close()
+    client = None
                 
 
 def manage_comm(client : client) -> None:
@@ -161,23 +177,28 @@ def manage_comm(client : client) -> None:
     """
     global clients_connected
     
-    while proj_run:
-
-        # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
-        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+    try:
         
-        # Ensure client is connected
-        if data == b'':
-            break
+        while proj_run:
+
+            # Receive data splitted by message type and all parameters (msg_type, all_params_concatanated)
+            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+            
+            # Ensure client is connected
+            if data == b'':
+                break
+        
+            msg_type = data[0]
+            msg_type = msg_type.decode()
+
+            if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
+                process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
+            
+            elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
+                process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else "")
     
-        msg_type = data[0]
-        msg_type = msg_type.decode()
-
-        if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
-            process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
-        
-        elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-            process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else "")
+    except Exception:
+        pass
         
     
     remove_disconnected_client(client)
@@ -232,7 +253,7 @@ def main():
     global max_clients, safety, log_data_base, uid_data_base
     
     if len(sys.argv) != 3:
-        print(f"Wrong Usage: python server.py <Client max> <Safety>")
+        print(f"Wrong Usage: python server.py <Client max> <Safety> <password>")
         #return
     #if not (sys.argv[1].isnumeric() and sys.argv[2].isnumeric()):
     #    print(f"Wrong Usage: Client max and safety params must be numerical")
@@ -240,6 +261,7 @@ def main():
     
     max_clients = 5 #int(sys.argv[1])
     safety = 5 #int(sys.argv[2])
+    password = "itzik" # sys.argv[3]
 
     conn, cursor = DBHandler.connect_DB(os.path.join(os.path.dirname(__file__), UserId.DB_NAME))
     log_data_base = UserLogsORM(conn, cursor, UserLogsORM.USER_LOGS_NAME)
