@@ -64,6 +64,18 @@ def check_screen_access(f):
 def start_screen():
     return render_template("opening_screen.html")
 
+
+@web_app.route('/check_password', methods=['POST'])
+def check_password():
+    password = request.form.get('password')
+    manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, password)
+    
+    valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX].decode()
+    if valid_pass == MessageParser.MANAGER_VALID_CONN:
+        return redirect(url_for("settings_screen"))
+    
+    return  redirect("/")
+
 # Settings screen
 @web_app.route("/settings")
 @check_screen_access
