@@ -70,7 +70,7 @@ def check_password():
     password = request.form.get('password')
     manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, password)
     
-    valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX].decode()
+    valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
     
