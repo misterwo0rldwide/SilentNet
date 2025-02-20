@@ -29,24 +29,76 @@
             mix-blend-mode: lighten; /* This helps blend the logo into the background */
         }
 
-        .message {
-            font-size: 1.8rem;
-            text-align: center;
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 15px;
-            padding: 20px 40px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.15);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            backdrop-filter: blur(10px); /* Give it a blurred background effect */
+        /* Password input styling */
+        .password-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .message:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
-            box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.2);
+        .password-input {
+            width: 250px;
+            padding: 10px 15px;
+            font-size: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            outline: none;
+            backdrop-filter: blur(5px);
             transition: all 0.3s ease-in-out;
+        }
+
+        .password-input:focus {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .submit-button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .submit-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Exit button styling */
+        .exit-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .exit-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Error message styling */
+        .error-message {
+            margin-top: 15px;
+            color: #ff4444;
+            font-size: 0.9rem;
+            display: none; /* Hidden by default */
         }
 
         /* Background animation */
@@ -77,25 +129,30 @@
     </style>
 </head>
 <body>
-    <!-- Logo -->
     <img src="{{ url_for('static', filename='Logo.png') }}" alt="Silent Net Logo" class="logo">
 
-    <!-- Message -->
-    <div class="message">
-        Press any key<br> or click to continue...
+    <div class="password-container">
+        <form method="POST" action="/check_password">
+            <input type="password" class="password-input" name="password" placeholder="Enter Password">
+            <button type="submit" class="submit-button">Submit</button>
+        </form>
+        <!-- Error message -->
+        <div class="error-message" id="error-message">
+            Incorrect password. Please try again.
+        </div>
     </div>
 
+    <!-- Exit Button -->
+    <button class="exit-btn" onclick="window.location.href='/exit'">Exit</button>
+
     <script>
-        // Proceed to next page (settings screen or any other action)
-        function goToNextPage() {
-            window.location.href = 'settings'; // Adjust the path as needed
+        // Check if the password was incorrect and show the error message
+        const urlParams = new URLSearchParams(window.location.search);
+        const passwordIncorrect = urlParams.get('password_incorrect');
+
+        if (passwordIncorrect === 'true') {
+            document.getElementById('error-message').style.display = 'block';
         }
-
-        // Listen for keydown event (key press)
-        document.addEventListener('keydown', goToNextPage);
-
-        // Listen for click event (mouse press)
-        document.addEventListener('click', goToNextPage);
     </script>
 </body>
 </html>

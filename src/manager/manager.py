@@ -62,7 +62,8 @@ def check_screen_access(f):
 @web_app.route("/")
 @check_screen_access
 def start_screen():
-    return render_template("opening_screen.html")
+    password_incorrect = request.args.get('password_incorrect', 'false')
+    return render_template("opening_screen.html", password_incorrect=password_incorrect)
 
 
 @web_app.route('/check_password', methods=['POST'])
@@ -74,7 +75,7 @@ def check_password():
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
     
-    return redirect("/")
+    return redirect(url_for("/", password_incorrect='true'))
 
 # Settings screen
 @web_app.route("/settings")
@@ -170,6 +171,7 @@ def main():
     direct = ""
     
     connected = attemp_server_connection()
+    connected = True
     if not connected:
         direct = "/loading"
     
