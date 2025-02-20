@@ -36,6 +36,11 @@ class MessageParser:
     MANAGER_SND_SETTINGS = "MST"
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
+    
+    # Manager sends password
+    MANAGER_MSG_PASSWORD = "MMP"
+    MANAGER_INVALID_CONN = "MIC"
+    MANAGER_VALID_CONN = "MVC"
 
 
     """
