@@ -74,7 +74,7 @@ def check_password():
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
     
-    return  redirect("/")
+    return redirect("/")
 
 # Settings screen
 @web_app.route("/settings")
