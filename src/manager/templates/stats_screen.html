@@ -180,6 +180,41 @@
                 text-shadow: 0 0 20px rgba(0, 209, 178, 0.9), 0 0 30px rgba(0, 209, 178, 0.7);
             }
         }
+
+        /* New styles for the name change section */
+        .name-change-container {
+            position: fixed;
+            top: 80px; /* Position it below the client name */
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .name-change-container input {
+            padding: 10px;
+            border: 2px solid #00d1b2;
+            border-radius: 5px;
+            background: #2a2a40;
+            color: #fff;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .name-change-container button {
+            padding: 10px 20px;
+            background-color: #00d1b2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .name-change-container button:hover {
+            background-color: #009f8a;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
@@ -189,8 +224,15 @@
     <img src="{{ url_for('static', filename='Logo.png') }}" alt="Logo" class="logo">
     <button class="return-btn" onclick="window.location.href='/employees'">Return</button>
     <div class="client-name-container">
-        Client: {{ client_name }}
+        Client: <span id="clientName">{{ client_name }}</span>
     </div>
+
+    <!-- Add the name change section -->
+    <div class="name-change-container">
+        <input type="text" id="newClientName" placeholder="Enter new client name">
+        <button onclick="changeClientName()">Change Name</button>
+    </div>
+
     <div class="container">
         <div class="card" id="processes">
             <h3>Most Opened Processes</h3>
@@ -342,11 +384,18 @@
             const expandedCard = document.getElementById('expandedCard');
             const overlay = document.getElementById('overlay');
 
-            expandedCard.innerHTML = card.innerHTML;
-            expandedCard.appendChild(document.createElement('button')).className = 'close-btn';
-            expandedCard.querySelector('.close-btn').innerText = 'X';
-            expandedCard.querySelector('.close-btn').onclick = closeExpandedCard;
+            // Clone the card content without the name change button
+            const cardContent = card.cloneNode(true);
+            expandedCard.innerHTML = cardContent.innerHTML;
 
+            // Add the close button
+            const closeButton = document.createElement('button');
+            closeButton.className = 'close-btn';
+            closeButton.innerText = 'X';
+            closeButton.onclick = closeExpandedCard;
+            expandedCard.appendChild(closeButton);
+
+            // Reinitialize charts if necessary
             if (card.id === 'processes') {
                 new Chart(expandedCard.querySelector('canvas'), {
                     type: 'bar',
@@ -459,6 +508,41 @@
                 expandCard(card);
             });
         });
+
+        // Function to change the client's name
+        function changeClientName() {
+            const newName = document.getElementById('newClientName').value.trim();
+            if (!newName) {
+                alert("Please enter a valid name.");
+                return;
+            }
+
+            // Get the current client name
+            const currentName = document.getElementById('clientName').textContent;
+
+            // Send a POST request to update the client's name
+            fetch('/update_client_name', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    current_name: currentName, // Include the current name
+                    new_name: newName,        // Include the new name
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the client name on the page
+                    document.getElementById('clientName').textContent = newName;
+                    alert("Client name updated successfully!");
+                } else {
+                    // Display the error message from the backend
+                    alert(data.message || "Failed to update client name.");
+                }
+            });
+        }
     </script>
 </body>
 </html>

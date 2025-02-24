@@ -141,15 +141,33 @@ def loading_screen():
 
     return render_template("loading_screen.html")
 
+@web_app.route('/update_client_name', methods=['POST'])
+def update_client_name():
+    data = request.get_json()
+    
+    current_name, new_name = data.get('current_name'), data.get('new_name')
+    manager_server_sock.protocol_send(MessageParser.MANAGER_CHG_CLIENT_NAME, current_name, new_name)
+
+    ans = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
+    
+    # If name is free to use
+    if ans == MessageParser.MANAGER_VALID_CHG:
+        return jsonify({"success": True})
+
+    else:
+        return jsonify({"success": False, "message": "Name is already used"})
+
+
 @web_app.route("/stats_screen")
 @check_screen_access
 def stats_screen():
     client_name = request.args.get('client_name')
-    
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
+
+    # Since flask will catch internal error even if protocol_recv returns empty string it will
+    # Go automatically to error page
     stats = json.loads(manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
 
-    print(stats)
     return render_template("stats_screen.html", stats=stats, client_name=client_name)
 
 @web_app.route("/exit-program")
