@@ -511,9 +511,13 @@
 
         // Function to change the client's name
         function changeClientName() {
+            const button = document.querySelector('.name-change-container button');
+            button.disabled = true; // Disable the button
+
             const newName = document.getElementById('newClientName').value.trim();
             if (!newName) {
                 alert("Please enter a valid name.");
+                button.disabled = false; // Re-enable the button
                 return;
             }
 
@@ -536,11 +540,16 @@
                 if (data.success) {
                     // Update the client name on the page
                     document.getElementById('clientName').textContent = newName;
+
+                    // Clear the input field after successful submission
+                    document.getElementById('newClientName').value = "";
+
                     alert("Client name updated successfully!");
                 } else {
                     // Display the error message from the backend
                     alert(data.message || "Failed to update client name.");
                 }
+                button.disabled = false; // Re-enable the button
             });
         }
     </script>

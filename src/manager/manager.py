@@ -21,12 +21,13 @@ web_app = Flask(__name__)
 # Global client socket variable
 manager_server_sock = ...
 
-screens_dictionary = {"/loading" : 0,
-                      "/": 1,
-                      "/settings": 2,
-                      "/employees": 3,
-                      "/stats_screen" : 4,
-                      "/exit" :  5, # Not a real number, Just to add it to the dictionary
+screens_dictionary = {
+                        "/exit" :  0, # Since we want to be able to return to any screen from exit screen we need it to be zero
+                        "/loading" : 1,
+                        "/": 2,
+                        "/settings": 3,
+                        "/employees": 4,
+                        "/stats_screen" : 5,
                       }
 
 current_screen = "/loading"
