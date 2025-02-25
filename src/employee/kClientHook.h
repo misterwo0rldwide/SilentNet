@@ -19,7 +19,7 @@
  * frequently uses this functions Hooking such function can crash the computer
  */
 
-#define CPU_USAGE_DELAY (5) // Five minutes
+#define CPU_USAGE_DELAY (2 * 60) // Two minutes
 
 static int handler_pre_do_fork(struct kprobe *, struct pt_regs *);
 static int handler_pre_input_event(struct kprobe *, struct pt_regs *);
