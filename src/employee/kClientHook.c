@@ -72,31 +72,39 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   // Get current time
   ktime_get_real_ts64(&tv);
 
-  // Send only after CPU_USAGE_DELAY has passed
-  if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
-    return 0;
-
-  cpu_core = smp_processor_id(); // Current cpu core id
-  idle_time = get_cpu_idle(cpu_core);
-  actv_time = get_cpu_active(cpu_core);
-
-  idle_delta = idle_time - cpu_idle_time[cpu_core];
-  actv_delta = actv_time - cpu_actv_time[cpu_core];
-
-  // Check if CPU did work and if it is not first time checking for cpu
-  if (!actv_delta || !last_tv) {
+  if (!last_tv) {
     last_tv = tv.tv_sec;
     return 0;
   }
 
-  cpu_usage = CALC_CPU_LOAD(actv_time, idle_delta);
-  msg_length = protocol_format(
-      msg_buf, "%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
-      HOOK_CPU_USAGE, cpu_core, cpu_usage);
+  // Send only after CPU_USAGE_DELAY has passed
+  if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
+    return 0;
 
-  if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length);
+  for (cpu_core = 0; cpu_core < NR_CPUS;
+       cpu_core++) { // iterate through cpu cores id
+    idle_time = get_cpu_idle(cpu_core);
+    actv_time = get_cpu_active(cpu_core);
 
+    idle_delta = idle_time - cpu_idle_time[cpu_core];
+    actv_delta = actv_time - cpu_actv_time[cpu_core];
+
+    cpu_idle_time[cpu_core] = idle_time;
+    cpu_actv_time[cpu_core] = actv_time;
+
+    // Check if CPU did work
+    if (!actv_delta)
+      continue;
+
+    cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
+    msg_length = protocol_format(
+        msg_buf, "%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
+        MSG_CPU_USAGE, cpu_core, cpu_usage);
+
+    if (msg_length > 0)
+      workqueue_message(transmit_data, msg_buf, msg_length);
+  }
+  last_tv = tv.tv_sec;
   return 0;
 }
 
