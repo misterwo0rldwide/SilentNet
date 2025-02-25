@@ -8,6 +8,7 @@
  */
 
 #include "kClientHook.h"
+#include "cpu_stats.h"
 #include "headers.h"
 #include "mac_find.h"
 #include "protocol.h"
@@ -23,10 +24,10 @@ MODULE_DESCRIPTION("Final project");
 static struct kprobe kps[PROBES_SIZE] = {
     [kp_do_fork] = {.pre_handler = handler_pre_do_fork,
                     .symbol_name = HOOK_PROCESS_FORK},
-    [kp_do_exit] = {.pre_handler = handler_pre_do_exit,
-                    .symbol_name = HOOK_PROCESS_EXIT},
     [kp_input_event] = {.pre_handler = handler_pre_input_event,
-                        .symbol_name = HOOK_INPUT_EVENT}};
+                        .symbol_name = HOOK_INPUT_EVENT},
+    [kp_cpu_usage] = {.pre_handler = handler_pre_calc_global_load,
+                      .symbol_name = HOOK_CPU_USAGE}};
 
 /* Fork hook */
 static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
@@ -49,21 +50,50 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   return 0;
 }
 
-/* Process termination hook */
-static int handler_pre_do_exit(struct kprobe *kp, struct pt_regs *regs) {
+/* CPU Usage */
+static int handler_pre_calc_global_load(struct kprobe *kp,
+                                        struct pt_regs *regs) {
   char msg_buf[BUFFER_SIZE];
   size_t msg_length;
 
-  // Check for validily and also not sending kernel process
-  if (!current || !current->mm || (current->flags & PF_KTHREAD))
+  // CPU calculation params
+  int cpu_core, cpu_usage;
+  struct timespec64 tv; // Measure current time
+  static long long int last_tv = 0;
+
+  // Current cpu times
+  unsigned long idle_time = 0, idle_delta = 0;
+  unsigned long actv_time = 0, actv_delta = 0;
+
+  // All cpu cores and their times
+  static unsigned long cpu_idle_time[NR_CPUS] = {0};
+  static unsigned long cpu_actv_time[NR_CPUS] = {0};
+
+  // Get current time
+  ktime_get_real_ts64(&tv);
+
+  // Send only after CPU_USAGE_DELAY has passed
+  if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
     return 0;
 
-  // Check for processes which activated by user
-  if (current_uid().val == 0)
-    return 0;
+  cpu_core = smp_processor_id(); // Current cpu core id
+  idle_time = get_cpu_idle(cpu_core);
+  actv_time = get_cpu_active(cpu_core);
 
-  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
-                               MSG_PROCESS_CLOSE, current->comm);
+  idle_delta = idle_time - cpu_idle_time[cpu_core];
+  actv_delta = actv_time - cpu_actv_time[cpu_core];
+
+  // Check if CPU did work and if it is not first time checking for cpu
+  if (!actv_delta || !last_tv) {
+    last_tv = tv.tv_sec;
+    return 0;
+  }
+
+  cpu_usage = CALC_CPU_LOAD(actv_time, idle_delta);
+  msg_length = protocol_format(
+      msg_buf, "%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
+      HOOK_CPU_USAGE, cpu_core, cpu_usage);
+
   if (msg_length > 0)
     workqueue_message(transmit_data, msg_buf, msg_length);
 
