@@ -68,6 +68,7 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   // All cpu cores and their times
   static unsigned long cpu_idle_time[NR_CPUS] = {0};
   static unsigned long cpu_actv_time[NR_CPUS] = {0};
+  static bool first_run = true; // Flag to check if it's the first run
 
   // Get current time
   ktime_get_real_ts64(&tv);
@@ -81,10 +82,16 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
     return 0;
 
-  for (cpu_core = 0; cpu_core < NR_CPUS;
-       cpu_core++) { // iterate through cpu cores id
+  for (cpu_core = 0; cpu_core < NR_CPUS; cpu_core++) {
     idle_time = get_cpu_idle(cpu_core);
     actv_time = get_cpu_active(cpu_core);
+
+    if (first_run) {
+      // Initialize the arrays with the current CPU times on the first run
+      cpu_idle_time[cpu_core] = idle_time;
+      cpu_actv_time[cpu_core] = actv_time;
+      continue;
+    }
 
     idle_delta = idle_time - cpu_idle_time[cpu_core];
     actv_delta = actv_time - cpu_actv_time[cpu_core];
@@ -104,6 +111,8 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
     if (msg_length > 0)
       workqueue_message(transmit_data, msg_buf, msg_length);
   }
+
+  first_run = false; // Set the flag to false after the first run
   last_tv = tv.tv_sec;
   return 0;
 }
