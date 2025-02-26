@@ -25,6 +25,7 @@ class MessageParser:
     CLIENT_PROCESS_OPEN = "CPO"
     CLIENT_PROCESS_CLOSE = "CPC"
     CLIENT_INPUT_EVENT = "CIE"
+    CLIENT_CPU_USAGE = "CCU"
 
     # Not used in communication only in DB
     CLIENT_LAST_INPUT_EVENT = "CLE"
@@ -33,9 +34,15 @@ class MessageParser:
 
     # Manager commands
     MANAGER_MSG_SIG = "M"
+    MANAGER_MSG_EXIT = "MME"
     MANAGER_SND_SETTINGS = "MST"
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
+
+    # Manager changes name of client
+    MANAGER_CHG_CLIENT_NAME = "MCN"
+    MANAGER_INVALID_CHG = "MIH"
+    MANAGER_VALID_CHG = "MCH"
     
     # Manager sends password
     MANAGER_MSG_PASSWORD = "MMP"

@@ -168,6 +168,7 @@ def stats_screen():
     # Since flask will catch internal error even if protocol_recv returns empty string it will
     # Go automatically to error page
     stats = json.loads(manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
+    print(stats)
 
     return render_template("stats_screen.html", stats=stats, client_name=client_name)
 

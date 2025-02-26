@@ -135,6 +135,7 @@ class UserLogsORM (DBHandler):
             Writes basic logs that need to be for every client when connected
             Writes when client first logged in (Also writes last client input event with the same time)
             Writes an empty record of inactive times
+            Writes an empty record of cpu usages
 
             INPUT: mac
             OUTPUT: None
@@ -155,6 +156,10 @@ class UserLogsORM (DBHandler):
         # Empty record of inactive times
         command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,'');"
         self.commit(command, mac, MessageParser.CLIENT_INACTIVE_EVENT)
+
+        # Empty record of cpu usage
+        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?, ?, '');"
+        self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)
 
     
     def __check_inactive(self, mac : str) -> tuple[str, int]:
@@ -212,6 +217,35 @@ class UserLogsORM (DBHandler):
         cur_time = cur_time.strftime("%Y-%m-%d %H:%M:%S")
         
         self.commit(command, cur_time, mac, MessageParser.CLIENT_LAST_INPUT_EVENT)
+    
+    def __update_cpu_usage(self, mac: str, data : bytes) -> None:
+        """
+            Updates cpu usage queuery
+
+            INPUT: mac, data
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+            @data: Bytes of data
+        """
+
+        command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
+        cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0]
+
+        cur_time = datetime.now()
+        cur_time = cur_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        cpu_core, cpu_usage = [s.decode() for s in MessageParser.protocol_message_deconstruct(data)]
+
+        # Since the client sends all the cores at the same time we dont need to keep track of the time
+        # Of cores that are after the first core
+        if int(cpu_core) > 0:
+            cpu_logs += f"{cpu_core},{cpu_usage}~"
+        else:
+            cpu_logs += f"{cpu_core},{cpu_usage},{cur_time}~"
+
+        command = f"UPDATE {self.table_name} SET data = ? WHERE mac = ? AND type = ?;"
+        self.commit(command, cpu_logs, mac, MessageParser.CLIENT_CPU_USAGE)
 
     def insert_data(self, mac: str, data_type: str, data: bytes) -> None:
         """
@@ -224,6 +258,10 @@ class UserLogsORM (DBHandler):
             @data_type: Type of data to be inserted
             @data: Bytes of data
         """
+
+        if data_type == MessageParser.CLIENT_CPU_USAGE:
+            self.__update_cpu_usage(mac, data)
+            return
 
         command = f"SELECT count FROM {self.table_name} WHERE mac = ? AND type = ? AND data = ?;"
         count = self.commit(command, mac, data_type, data)
@@ -262,7 +300,7 @@ class UserLogsORM (DBHandler):
             Calculates idle times of user
 
             INPUT: mac
-            OUTPUT: List of List of the datetime the user went idle and the time of idleness
+            OUTPUT: List of Tuples of the datetime the user went idle and the time of idleness
 
             @mac: MAC address of user's computer
         """
@@ -284,7 +322,7 @@ class UserLogsORM (DBHandler):
             Calculates the average wpm the user does while excluding inactive times
 
             INPUT: mac, inactive
-            OUTPUT: Integer, list[tuple[datetime, int]], bool
+            OUTPUT: Integer
 
             @mac: MAC address of user's computer
             @inactive_times: Pre calculated inactive times of user
@@ -295,7 +333,7 @@ class UserLogsORM (DBHandler):
         if inactive_after_last:
             inactive_times = inactive_times[:-1]
         
-        total_inactive = sum(int(i[1]) for i in inactive_times)
+        total_inactive = sum(int(i[1]) for i in inactive_times if i != '' and len(i) > 1)
 
         # Get word count, 57 is the translation for space char in input_event in linux
         # Checks for data which has space char in it
@@ -313,6 +351,21 @@ class UserLogsORM (DBHandler):
         active_time = max(active_time, 1)  # Prevent division by zero
 
         return words_cnt // active_time
+    
+    def get_cpu_usage(self, mac : str) -> list[tuple[int, int, datetime]]:
+        """
+            Gets all logs of cpu usage
+
+            INPUT: mac
+            OUTPUT: List of Tuples of the cpu core number and usage of it and time it was logged
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
+        cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split("~")
+
+        return [i.split(",") for i in cpu_logs][:-1] # Ignore last index since it is empty
 
 class UserId (DBHandler):
 
@@ -369,32 +422,32 @@ class UserId (DBHandler):
         self.commit(command, mac, hostname)
         return False
     
-    def update_name(self, mac: str, name : str):
+    def update_name(self, prev_name : str, new_name : str):
         """
             Manager changes a name for a client
             
-            INPUT: mac, name
+            INPUT: prev_name, new_name
             OUTPUT: None
             
-            @mac: MAC address of user's computer
-            @name: User's new changed name
+            @prev_name: Previous name of client
+            @new_name: New name of client changed by manager
         """
         
-        command = f"UPDATE {self.table_name} SET hostname = ? WHERE mac = ?;"
-        self.commit(command, mac, name)
+        command = f"UPDATE {self.table_name} SET hostname = ? WHERE hostname = ?;"
+        self.commit(command, new_name, prev_name)
     
-    def check_user_existence(self, mac : str) -> int:
+    def check_user_existence(self, hostname : str) -> int:
         """
             Checking for a certain client to see if already connected
             
-            INPUT: mac
+            INPUT: hostname
             OUTPUT: int
             
-            @mac: MAC address of user's computer
+            @hostname: hostname of user's computer
         """
 
-        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE mac = ?;"
-        return self.commit(command, mac)[0][0] > 0
+        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE hostname = ?;"
+        return self.commit(command, hostname)[0][0] > 0
     
     def get_clients(self) -> list[str]:
         """

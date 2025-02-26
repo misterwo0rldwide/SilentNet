@@ -61,6 +61,27 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
     else:
         log_data_base.insert_data(client.get_address(), log_type, log_params)
 
+def group_core_usage(cpu_usage : list) -> dict:
+    """
+        Groups all log on a core to core number with hashmap
+        
+        INPUT: cpu_usage
+        OUTPUT: Dictionary of core number to list of usages
+        
+        @cpu_usage -> List of logs of cpu usage (core, usage)
+    """
+    
+    core_usage = {}
+    for log in cpu_usage:
+        core = log[0]
+        usage = log[1]
+
+        if core not in core_usage:
+            core_usage[core] = []
+        core_usage[core].append(int(usage))
+    
+    return core_usage
+
 def get_client_stats(client_name : str) -> str:
     """
         Gets all avaliable stats on a client
@@ -75,18 +96,27 @@ def get_client_stats(client_name : str) -> str:
     process_cnt = log_data_base.get_process_count(mac_addr)
     inactive_times, inactive_after_last = log_data_base.get_inactive_times(mac_addr)
     words_per_min = int(log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
+    cpu_usage = log_data_base.get_cpu_usage(mac_addr)
+    core_usage = group_core_usage(cpu_usage)
 
     # Insert data into json format for manager
     data = {
         "processes": {
-                "labels": [i[0].decode() for i in process_cnt],
-                "data": [i[1] for i in process_cnt]
-            },
+            "labels": [i[0].decode() for i in process_cnt],
+            "data": [i[1] for i in process_cnt]
+        },
         "inactivity": {
-                "labels": [i[0] for i in inactive_times],
-                "data" : [int(i[1]) for i in inactive_times]
-            },
-        "wpm" : words_per_min
+            "labels": [i[0] for i in inactive_times],
+            "data": [int(i[1]) for i in inactive_times if len(i) == 2]
+        },
+        "wpm": words_per_min,
+        "cpu_usage": {
+            "labels": [i[2] for i in cpu_usage if len(i) > 2],
+            "data": {
+                "cores": sorted(list(core_usage.keys())),
+                "usage": [core_usage[core] for core in sorted(core_usage.keys())]
+            }
+        }
     }
     
     return json.dumps(data)
@@ -104,8 +134,10 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
     """
     global max_clients, safety
 
-    ret_msg = ""
+    ret_msg = []
     ret_msg_type = ""
+
+    manager_disconnect = False
 
     # Buisnes logic of manager requets
     if msg_type == MessageParser.MANAGER_SND_SETTINGS:
@@ -120,18 +152,38 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         ret_msg = [get_client_stats(msg_params.decode())] # Due to asterik when sending 
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
+    elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
+        prev_name, new_name = MessageParser.protocol_message_deconstruct(msg_params)
+        prev_name, new_name = prev_name.decode(), new_name.decode()
+
+        ret_msg = []
+        
+        # If new_name does not exists
+        if not uid_data_base.check_user_existence(new_name):
+            uid_data_base.update_name(prev_name, new_name)
+            ret_msg_type = MessageParser.MANAGER_VALID_CHG
+
+        else:
+            ret_msg_type = MessageParser.MANAGER_INVALID_CHG
+    
     elif msg_type == MessageParser.MANAGER_MSG_PASSWORD:
         ret_msg = [] # Not any params to send
         
         # Check wether password is correct
         ret_msg_type = MessageParser.MANAGER_VALID_CONN if password == msg_params.decode() else MessageParser.MANAGER_INVALID_CONN
+
+        if ret_msg_type == MessageParser.MANAGER_INVALID_CONN:
+            manager_disconnect = True
+    
+    elif msg_type == MessageParser.MANAGER_MSG_EXIT:
+        manager_disconnect = True
     
     # If there is data to send to manager
-    if ret_msg or ret_msg_type:
+    if ret_msg_type:
         client.protocol_send(ret_msg_type, *ret_msg)
     
     # If manager did not enter correct password disconnect it
-    if ret_msg_type == MessageParser.MANAGER_INVALID_CONN:
+    if manager_disconnect:
         remove_disconnected_client(client)
 
 def remove_disconnected_client(client : client) -> None:
@@ -197,8 +249,8 @@ def manage_comm(client : client) -> None:
             elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
                 process_manager_request(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else "")
     
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
         
     
     remove_disconnected_client(client)
