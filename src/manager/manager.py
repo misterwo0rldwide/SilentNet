@@ -104,10 +104,43 @@ def submit_settings():
 @check_screen_access
 def employees_screen():
 
-    manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
-    connected_clients = [name.decode() for name in manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]]
+    #manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+    #connected_clients = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]
 
-    return render_template("name_screen.html", name_list = connected_clients)
+    #stats = []
+    #for client in connected_clients:
+    #    name, active = client.decode().split(",")
+    #    stats.append([name, int(active)])
+
+    stats = [
+        ("Alice", 95),
+        ("Bob", 45),
+        ("Charlie", 70),
+        ("David", 30),
+        ("Eve", 85),
+        ("Frank", 10),
+        ("Grace", 60),
+        ("Hank", 50),
+        ("Ivy", 90),
+        ("Jack", 20),
+        ("Karen", 75),
+        ("Leo", 40),
+        ("Mona", 65),
+        ("Nina", 55),
+        ("Oscar", 15),
+        ("Paul", 80),
+        ("Quincy", 25),
+        ("Rachel", 35),
+        ("Steve", 5),
+        ("Tina", 100),
+        ("Uma", 0),
+        ("Victor", 95),
+        ("Wendy", 50),
+        ("Xander", 10),
+        ("Yara", 85),
+        ("Zack", 70)
+    ]
+    return render_template("name_screen.html", name_list = stats)
 
 def attemp_server_connection() -> bool:
     """

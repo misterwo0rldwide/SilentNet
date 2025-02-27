@@ -217,6 +217,22 @@ class UserLogsORM (DBHandler):
         cur_time = cur_time.strftime("%Y-%m-%d %H:%M:%S")
         
         self.commit(command, cur_time, mac, MessageParser.CLIENT_LAST_INPUT_EVENT)
+
+    def __get_total_active_time(self, mac : str) -> int:
+        """
+            Calculates total active time of user
+
+            INPUT: mac
+            OUTPUT: Integer - minutes amount of active time
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
+        first_input = datetime.strptime(self.commit(command, mac, MessageParser.CLIENT_FIRST_INPUT_EVENT)[0][0], "%Y-%m-%d %H:%M:%S")
+        last_input = datetime.strptime(self.commit(command, mac, MessageParser.CLIENT_LAST_INPUT_EVENT)[0][0], "%Y-%m-%d %H:%M:%S")
+
+        return (last_input - first_input).total_seconds() // 60
     
     def __update_cpu_usage(self, mac: str, data : bytes) -> None:
         """
@@ -367,6 +383,24 @@ class UserLogsORM (DBHandler):
 
         return [i.split(",") for i in cpu_logs][:-1] # Ignore last index since it is empty
 
+    def get_active_precentage(self, mac : str) -> int:
+        """
+            Calculates the percentage of time user was active
+
+            INPUT: mac
+            OUTPUT: Integer
+        """
+
+        inactive_time, inactive_after_last = self.get_inactive_times(mac)
+
+        if inactive_after_last:
+            inactive_time = inactive_time[:-1]
+        
+        total_inactive = sum(int(i[1]) for i in inactive_time if i != '' and len(i) > 1)
+        total_active = self.__get_total_active_time(mac)
+
+        return int((total_active / (total_active + total_inactive)) * 100)
+
 class UserId (DBHandler):
 
     USER_ID_NAME = "uid"
@@ -449,16 +483,18 @@ class UserId (DBHandler):
         command = f"SELECT COUNT(*) FROM {self.table_name} WHERE hostname = ?;"
         return self.commit(command, hostname)[0][0] > 0
     
-    def get_clients(self) -> list[str]:
+    def get_clients(self) -> list[tuple[int,str]]:
         """
-            Gets all data on clients which connect to system
+            Gets all data on clients mac and hostname
             
             INPUT: None
-            OUTPUT: list[str]
+            OUTPUT: list[tuple[str, str]]
         """
 
-        command = f"SELECT hostname FROM {self.table_name}"
-        return [result[0] for result in self.commit(command)]
+        command = f"SELECT mac, hostname FROM {self.table_name}"
+        clients = self.commit(command)
+
+        return clients
     
     def get_mac_by_hostname(self, hostname : str) -> str:
         """

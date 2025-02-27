@@ -145,7 +145,12 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         max_clients, safety = int(max_clients), int(safety)
         
     elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
-        ret_msg = uid_data_base.get_clients()
+        clients = uid_data_base.get_clients()
+        ret_msg = []
+
+        for mac, hostname in clients:
+            ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)}")
+
         ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
     
     elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:

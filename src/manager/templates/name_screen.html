@@ -54,7 +54,6 @@
             max-width: 80%;
         }
         .button {
-            background-color: #ffffff;
             border: 1px solid #e0e0e0;
             padding: 15px 10px; /* Adjusted padding to ensure text fits */
             cursor: pointer;
@@ -74,7 +73,6 @@
         }
 
         .button:hover {
-            background-color: #f1f1f1;
             transform: translateY(-3px);
             box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
         }
@@ -158,10 +156,10 @@
     
     <!-- Print all ip list -->
     <div class="container">
-        {% for name in name_list %}
+        {% for name, activity in name_list %}
         <form action="/stats_screen" method="get" style="margin-left: 90px;">
             <input type="hidden" name="client_name" value="{{ name }}">
-            <button class="button" type="submit" onmouseover="showTooltip('{{ name }}')" onmouseout="hideTooltip()">
+            <button class="button" type="submit" onmouseover="showTooltip('{{ name }}')" onmouseout="hideTooltip()" style="background-color: rgb({{ 255 - (activity * 2.55) }}, {{ activity * 2.55 }}, 0);">
                 {{ name[:18] }}{% if name|length > 18 %}...{% endif %}
             </button>
         </form>
