@@ -158,7 +158,7 @@ class UserLogsORM (DBHandler):
         self.commit(command, mac, MessageParser.CLIENT_INACTIVE_EVENT)
 
         # Empty record of cpu usage
-        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?, ?, '');"
+        command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,'');"
         self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)
 
     
