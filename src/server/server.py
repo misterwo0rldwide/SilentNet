@@ -34,33 +34,33 @@ password = "itzik" # Password for managers when trying to connect in order for a
 log_data_base = ...
 uid_data_base = ...
 
-def determine_client_type(client : client, msg_type : str, msg : bytes) -> bool:
+def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
     """
         Determines client type based on first message sent
         
-        INPUT: client
-        OUTPUT: bool (True if client is logged in)
+        INPUT: client, msg_type, msg
+        OUTPUT: None
         
         @client -> Protocol client object
+        @msg_type -> Message type
+        @msg -> Message parameters
     """
     
-    logged_in = False
 
     # Check if client is a manager
     if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
-        logged_in = True
         ret_msg_type = MessageParser.MANAGER_INVALID_CONN
 
         if msg.decode() == password:
-            client.mark_as_manager()
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
 
         client.protocol_send(ret_msg_type)
+
+        if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
+            process_manager_request(client)
     
     # Check if client is a client
     elif msg_type == MessageParser.CLIENT_MSG_AUTH:
-        logged_in = True
-        client.mark_as_client()
 
         mac, hostname = MessageParser.protocol_message_deconstruct(msg)
         mac, hostname = mac.decode(), hostname.decode()
@@ -71,10 +71,10 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> bool:
         # Set up DB for client
         if not logged:
             log_data_base.client_setup_db(client.get_address())
-    
-    return logged_in
+        
+        process_client_data(client)
 
-def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
+def process_client_data(client : client) -> None:
     """
         Processes client's sent data
         
@@ -86,8 +86,33 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         @log_params -> Logging message paramteres
     """
 
-    # Logging data
-    log_data_base.insert_data(client.get_address(), log_type, log_params)
+    while proj_run:
+
+        try:
+            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+
+            if data == b'' or len(data) != 2:
+                break
+
+            log_type, log_params = data[0], data[1]
+            log_type = log_type.decode()
+
+
+            # Logging data
+            if log_type in MessageParser.CLIENT_ALL_MSG:
+                log_data_base.insert_data(client.get_address(), log_type, log_params)
+            else:
+                disconnect = client.unsafe_msg_cnt_inc()
+
+                if disconnect:
+                    break
+        
+        except Exception as e:
+            print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
+            disconnect = client.unsafe_msg_cnt_inc()
+
+            if disconnect:
+                break
 
 def group_core_usage(cpu_usage : list) -> dict:
     """
@@ -149,7 +174,7 @@ def get_client_stats(client_name : str) -> str:
     
     return json.dumps(data)
 
-def process_manager_request(client : client, msg_type : str, msg_params : bytes) -> None:
+def process_manager_request(client : client) -> None:
     """
         Processes client's sent data
         
@@ -162,56 +187,80 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
     """
     global max_clients, safety
 
-    ret_msg = []
-    ret_msg_type = ""
-    manager_disconnect = False
+    while proj_run:
 
-    # Handle different manager request types
-    if msg_type == MessageParser.MANAGER_SND_SETTINGS:
-        # Update server settings
-        max_clients, safety = MessageParser.protocol_message_deconstruct(msg_params)
-        max_clients, safety = int(max_clients), int(safety)
+        try:
+            ret_msg = []
+            ret_msg_type = ""
+            manager_disconnect = False
+
+            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+
+            if data == b'':
+                break
+
+            msg_type = data[0].decode()
+            msg_params = data[1] if len(data) > 1 else ""
+
+            # Handle different manager request types
+            if msg_type == MessageParser.MANAGER_SND_SETTINGS:
+                # Update server settings
+                max_clients, safety = MessageParser.protocol_message_deconstruct(msg_params)
+                max_clients, safety = int(max_clients), int(safety)
+                
+            elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
+                # Get list of all clients
+                clients = uid_data_base.get_clients()
+                ret_msg = []
+
+                for mac, hostname in clients:
+                    ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)}")
+
+                ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
+            
+            elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
+                # Get detailed stats for a specific client
+                ret_msg = [get_client_stats(msg_params.decode())]  # Due to asterisk when sending 
+                ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
+            
+            elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
+                # Change client hostname
+                prev_name, new_name = MessageParser.protocol_message_deconstruct(msg_params)
+                prev_name, new_name = prev_name.decode(), new_name.decode()
+
+                ret_msg = []
+                
+                # If new_name does not exist
+                if not uid_data_base.check_user_existence(new_name):
+                    uid_data_base.update_name(prev_name, new_name)
+                    ret_msg_type = MessageParser.MANAGER_VALID_CHG
+                else:
+                    ret_msg_type = MessageParser.MANAGER_INVALID_CHG
+            
+            elif msg_type == MessageParser.MANAGER_MSG_EXIT:
+                # Manager requested to exit
+                manager_disconnect = True
+
+            else:
+                disconnect = client.unsafe_msg_cnt_inc()
+
+                if disconnect:
+                    manager_disconnect = True
+            
+            # Send response to manager if needed
+            if ret_msg_type:
+                client.protocol_send(ret_msg_type, *ret_msg)
+            
+            # Disconnect manager if required
+            if manager_disconnect:
+                break
         
-    elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
-        # Get list of all clients
-        clients = uid_data_base.get_clients()
-        ret_msg = []
+        except Exception as e:
+            print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
+            disconnect = client.unsafe_msg_cnt_inc()
 
-        for mac, hostname in clients:
-            ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)}")
-
-        ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
-    
-    elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
-        # Get detailed stats for a specific client
-        ret_msg = [get_client_stats(msg_params.decode())]  # Due to asterisk when sending 
-        ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
-    
-    elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
-        # Change client hostname
-        prev_name, new_name = MessageParser.protocol_message_deconstruct(msg_params)
-        prev_name, new_name = prev_name.decode(), new_name.decode()
-
-        ret_msg = []
-        
-        # If new_name does not exist
-        if not uid_data_base.check_user_existence(new_name):
-            uid_data_base.update_name(prev_name, new_name)
-            ret_msg_type = MessageParser.MANAGER_VALID_CHG
-        else:
-            ret_msg_type = MessageParser.MANAGER_INVALID_CHG
-    
-    elif msg_type == MessageParser.MANAGER_MSG_EXIT:
-        # Manager requested to exit
-        manager_disconnect = True
-    
-    # Send response to manager if needed
-    if ret_msg_type:
-        client.protocol_send(ret_msg_type, *ret_msg)
-    
-    # Disconnect manager if required
-    if manager_disconnect:
-        remove_disconnected_client(client)
+            if disconnect:
+                break
 
 def remove_disconnected_client(client : client) -> None:
     """
@@ -241,6 +290,8 @@ def remove_disconnected_client(client : client) -> None:
                 del clients_connected[index]
                 break
 
+    print(f"Client disconnected: {client.get_ip()}")
+
     client.close()
     client = None
 
@@ -262,54 +313,13 @@ def manage_comm(client : client) -> None:
     data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
     # Check if valid msg
     if data == b'':
-        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
         remove_disconnected_client(client)
         return
     
     msg_type = data[0].decode()
 
     # Check if manager or client
-    if not determine_client_type(client, msg_type, data[1]):
-        remove_disconnected_client(client)
-        return
-
-    while proj_run:
-
-            try:
-                # Receive data split by message type and parameters
-                data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-                
-                # Check if client disconnected
-                if data == b'':
-                    break
-
-                msg_type = data[0].decode()
-
-                # Process based on message signature
-                if client.check_if_client() and msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
-                    process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
-                    client.reset_unsafe_msg_cnt()
-                
-                elif client.check_if_manager() and msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-                    process_manager_request(
-                        client, 
-                        msg_type, 
-                        data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else ""
-                    )
-
-                    client.reset_unsafe_msg_cnt()
-                
-                else:
-                    disconnect = client.unsafe_msg_cnt_inc()
-                    if disconnect:
-                        break
-        
-            except Exception as e:
-                print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
-                disconnect = client.unsafe_msg_cnt_inc()
-
-                if disconnect:
-                    break
+    determine_client_type(client, msg_type, data[1])
     
     # Always clean up disconnected client
     remove_disconnected_client(client)

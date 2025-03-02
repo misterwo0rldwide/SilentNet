@@ -27,6 +27,8 @@ class MessageParser:
     CLIENT_INPUT_EVENT = "CIE"
     CLIENT_CPU_USAGE = "CCU"
 
+    CLIENT_ALL_MSG = {CLIENT_MSG_SIG, CLIENT_MSG_AUTH, CLIENT_PROCESS_OPEN, CLIENT_PROCESS_CLOSE, CLIENT_INPUT_EVENT, CLIENT_CPU_USAGE}
+
     # Not used in communication only in DB
     CLIENT_LAST_INPUT_EVENT = "CLE"
     CLIENT_FIRST_INPUT_EVENT = "CFE"
@@ -119,6 +121,7 @@ class TCPsocket:
         
         else:
             self.__sock = sock
+            self.__ip = self.__sock.getsockname()[0]
     
     def set_timeout(self, time):
         """
@@ -131,6 +134,16 @@ class TCPsocket:
         """
 
         self.__sock.settimeout(time)
+    
+    def get_ip(self) -> str:
+        """
+            Returns the IP of the socket
+            
+            INPUT: None
+            OUTPUT: IP of the socket
+        """
+        
+        return self.__ip
     
     def create_server_socket(self, bind_ip : str, bind_port : int, server_listen : int) -> None:
         """
@@ -322,10 +335,6 @@ class client (TCPsocket):
         # Add settings in order to get mac address
         self.__mac = ...
 
-        # Two flags to indicate if the client connected to server is client or manager
-        self.__client = False
-        self.__manager = False
-
         # Unsafe message counter
         self.__unsafe_msg_cnt = 0
         self.__unsafe_max = safety
@@ -399,50 +408,6 @@ class client (TCPsocket):
 
         constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
         self.send(constr_msg)
-    
-    def mark_as_client(self) -> None:
-        """
-            Mark client as client
-            
-            INPUT: None
-            OUTPUT: None
-        """
-        
-        self.__client = True
-    
-    def check_if_client(self) -> bool:
-        """
-            Check if client is client
-            
-            INPUT: None
-            OUTPUT: Boolean value
-            
-            @return -> True if client is client
-        """
-        
-        return self.__client
-    
-    def mark_as_manager(self) -> None:
-        """
-            Mark client as manager
-
-            INPUT: None
-            OUTPUT: None
-        """
-        
-        self.__manager = True
-    
-    def check_if_manager(self) -> bool:
-        """
-            Check if client is manager
-            
-            INPUT: None
-            OUTPUT: Boolean value
-            
-            @return -> True if client is manager
-        """
-        
-        return self.__manager
 
     def unsafe_msg_cnt_inc(self) -> bool:
         """
