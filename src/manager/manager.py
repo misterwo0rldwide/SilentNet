@@ -23,6 +23,7 @@ web_app = Flask(__name__)
 
 # Global client socket variable
 manager_server_sock = None
+manager_connected = False
 
 screens_dictionary = {
     "/exit": 0,  # Since we want to be able to return to any screen from exit screen, we need it to be zero
@@ -96,7 +97,7 @@ def start_screen():
     password_incorrect = request.args.get('password_incorrect', 'false')
 
     # If password_incorrect is true, it means the user has already been here, so check for connection
-    if password_incorrect and not attempt_server_connection():
+    if password_incorrect and not manager_connected:
         return redirect(url_for("loading_screen"))
 
     return render_template("opening_screen.html", password_incorrect=password_incorrect)
@@ -109,6 +110,12 @@ def check_password():
     valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
+    
+    # Server disconnected socket so we need to reconnect
+    attempt_server_connection()
+
+    if not manager_connected:
+        return redirect(url_for("loading_screen"))
     
     return redirect(url_for("start_screen", password_incorrect='true'))
 
@@ -140,7 +147,8 @@ def employees_screen():
 
 @web_app.route("/manual-connect")
 def manual_connect():
-    return jsonify({"status": attempt_server_connection()})
+    attempt_server_connection()
+    return jsonify({"status": manager_connected})
 
 @web_app.route('/update_client_name', methods=['POST'])
 def update_client_name():
@@ -174,21 +182,20 @@ def attempt_server_connection() -> bool:
     INPUT: None
     OUTPUT: Boolean value to indicate if the connection succeeded.
     """
-    global manager_server_sock
+    global manager_server_sock, manager_connected
 
     manager_server_sock = client()
-    connection_status = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
+    manager_connected = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
     
-    if connection_status:
+    if manager_connected:
         manager_server_sock.set_timeout(0.1)
     
-    return connection_status
 
 def main():
     direct = ""
-    connected = attempt_server_connection()
-    connected = True  # For debugging purposes
-    if not connected:
+    attempt_server_connection()
+
+    if not manager_connected:
         direct = "/loading"
     
     port = TCPsocket.get_free_port()

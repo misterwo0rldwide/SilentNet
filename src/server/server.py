@@ -34,6 +34,46 @@ password = "itzik" # Password for managers when trying to connect in order for a
 log_data_base = ...
 uid_data_base = ...
 
+def determine_client_type(client : client, msg_type : str, msg : bytes) -> bool:
+    """
+        Determines client type based on first message sent
+        
+        INPUT: client
+        OUTPUT: bool (True if client is logged in)
+        
+        @client -> Protocol client object
+    """
+    
+    logged_in = False
+
+    # Check if client is a manager
+    if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
+        logged_in = True
+        ret_msg_type = MessageParser.MANAGER_INVALID_CONN
+
+        if msg.decode() == password:
+            client.mark_as_manager()
+            ret_msg_type = MessageParser.MANAGER_VALID_CONN
+
+        client.protocol_send(ret_msg_type)
+    
+    # Check if client is a client
+    elif msg_type == MessageParser.CLIENT_MSG_AUTH:
+        logged_in = True
+        client.mark_as_client()
+
+        mac, hostname = MessageParser.protocol_message_deconstruct(msg)
+        mac, hostname = mac.decode(), hostname.decode()
+        
+        client.set_address(mac)
+        logged = uid_data_base.insert_data(mac, hostname)
+
+        # Set up DB for client
+        if not logged:
+            log_data_base.client_setup_db(client.get_address())
+    
+    return logged_in
+
 def process_client_data(client : client, log_type : str, log_params : bytes) -> None:
     """
         Processes client's sent data
@@ -46,21 +86,8 @@ def process_client_data(client : client, log_type : str, log_params : bytes) -> 
         @log_params -> Logging message paramteres
     """
 
-    # Mac and user auth
-    if log_type == MessageParser.CLIENT_MSG_AUTH:
-        mac, hostname = MessageParser.protocol_message_deconstruct(log_params)
-        mac, hostname = mac.decode(), hostname.decode()
-        
-        client.set_address(mac)
-        logged = uid_data_base.insert_data(mac, hostname)
-
-        # Set up DB for client
-        if not logged:
-            log_data_base.client_setup_db(client.get_address())
-
     # Logging data
-    else:
-        log_data_base.insert_data(client.get_address(), log_type, log_params)
+    log_data_base.insert_data(client.get_address(), log_type, log_params)
 
 def group_core_usage(cpu_usage : list) -> dict:
     """
@@ -174,16 +201,6 @@ def process_manager_request(client : client, msg_type : str, msg_params : bytes)
         else:
             ret_msg_type = MessageParser.MANAGER_INVALID_CHG
     
-    elif msg_type == MessageParser.MANAGER_MSG_PASSWORD:
-        # Validate manager password
-        ret_msg = []  # No params to send
-        
-        # Check whether password is correct
-        ret_msg_type = MessageParser.MANAGER_VALID_CONN if password == msg_params.decode() else MessageParser.MANAGER_INVALID_CONN
-
-        if ret_msg_type == MessageParser.MANAGER_INVALID_CONN:
-            manager_disconnect = True
-    
     elif msg_type == MessageParser.MANAGER_MSG_EXIT:
         # Manager requested to exit
         manager_disconnect = True
@@ -241,31 +258,58 @@ def manage_comm(client : client) -> None:
         @client -> Protocol client object
     """
     global clients_connected
-    
-    try:
-        while proj_run:
-            # Receive data split by message type and parameters
-            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-            
-            # Check if client disconnected
-            if data == b'':
-                break
-        
-            msg_type = data[0].decode()
 
-            # Process based on message signature
-            if msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
-                process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
-            
-            elif msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
-                process_manager_request(
-                    client, 
-                    msg_type, 
-                    data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else ""
-                )
+    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+    # Check if valid msg
+    if data == b'':
+        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+        remove_disconnected_client(client)
+        return
     
-    except Exception as e:
-        print(f"Communication error: {e}")
+    msg_type = data[0].decode()
+
+    # Check if manager or client
+    if not determine_client_type(client, msg_type, data[1]):
+        remove_disconnected_client(client)
+        return
+
+    while proj_run:
+
+            try:
+                # Receive data split by message type and parameters
+                data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+                
+                # Check if client disconnected
+                if data == b'':
+                    break
+
+                msg_type = data[0].decode()
+
+                # Process based on message signature
+                if client.check_if_client() and msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.CLIENT_MSG_SIG:
+                    process_client_data(client, msg_type, data[MessageParser.PROTOCOL_DATA_INDEX])
+                    client.reset_unsafe_msg_cnt()
+                
+                elif client.check_if_manager() and msg_type[MessageParser.SIG_MSG_INDEX] == MessageParser.MANAGER_MSG_SIG:
+                    process_manager_request(
+                        client, 
+                        msg_type, 
+                        data[MessageParser.PROTOCOL_DATA_INDEX] if len(data) > 1 else ""
+                    )
+
+                    client.reset_unsafe_msg_cnt()
+                
+                else:
+                    disconnect = client.unsafe_msg_cnt_inc()
+                    if disconnect:
+                        break
+        
+            except Exception as e:
+                print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
+                disconnect = client.unsafe_msg_cnt_inc()
+
+                if disconnect:
+                    break
     
     # Always clean up disconnected client
     remove_disconnected_client(client)
@@ -288,7 +332,7 @@ def get_clients(server_comm : server, max_clients : int) -> None:
             # Check if we can accept more clients
             if len(clients_connected) < max_clients:
                 # Accept new client
-                client = server_comm.recv_client()
+                client = server_comm.recv_client(safety)
                 clients_thread = threading.Thread(target=manage_comm, args=(client,))
                 
                 # Add client to connected list with proper locking

@@ -305,21 +305,30 @@ class TCPsocket:
 
 class client (TCPsocket):
     
-    def __init__(self, sock: Optional[socket.socket] = None):
+    def __init__(self, sock: Optional[socket.socket] = None, safety: int = 10):
         """
             Create the client side socket
             socket type: TCP
             
-            INPUT: sock (not necessary)
+            INPUT: sock (not necessary), safety
             OUTPUT: None
             
             @sock -> Socket object (socket.socket)
+            @safey -> Safety counter for unsafe messages
         """
         
         super().__init__(sock)
     
         # Add settings in order to get mac address
         self.__mac = ...
+
+        # Two flags to indicate if the client connected to server is client or manager
+        self.__client = False
+        self.__manager = False
+
+        # Unsafe message counter
+        self.__unsafe_msg_cnt = 0
+        self.__unsafe_max = safety
     
     def set_address(self, mac_addr) -> None:
         """
@@ -387,9 +396,79 @@ class client (TCPsocket):
             @msg_type -> Message type of the message to be sent
             @args -> The rest of the data to be sent in the message
         """
-        
+
         constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
         self.send(constr_msg)
+    
+    def mark_as_client(self) -> None:
+        """
+            Mark client as client
+            
+            INPUT: None
+            OUTPUT: None
+        """
+        
+        self.__client = True
+    
+    def check_if_client(self) -> bool:
+        """
+            Check if client is client
+            
+            INPUT: None
+            OUTPUT: Boolean value
+            
+            @return -> True if client is client
+        """
+        
+        return self.__client
+    
+    def mark_as_manager(self) -> None:
+        """
+            Mark client as manager
+
+            INPUT: None
+            OUTPUT: None
+        """
+        
+        self.__manager = True
+    
+    def check_if_manager(self) -> bool:
+        """
+            Check if client is manager
+            
+            INPUT: None
+            OUTPUT: Boolean value
+            
+            @return -> True if client is manager
+        """
+        
+        return self.__manager
+
+    def unsafe_msg_cnt_inc(self) -> bool:
+        """
+            Increase unsafe message counter
+            
+            INPUT: None
+            OUTPUT: boolean value
+        """
+        
+        self.__unsafe_msg_cnt += 1
+
+        if self.__unsafe_msg_cnt > self.__unsafe_max:
+            return True
+        
+        return False
+
+    def reset_unsafe_msg_cnt(self) -> None:
+        """
+            Reset unsafe message counter
+            
+            INPUT: None
+            OUTPUT: None
+        """
+        
+        self.__unsafe_msg_cnt = 0
+    
 
 class server (TCPsocket):
     SERVER_BIND_IP   = "0.0.0.0"
@@ -411,7 +490,7 @@ class server (TCPsocket):
         self.create_server_socket(self.SERVER_BIND_IP, self.SERVER_BIND_PORT, server_listen)
     
     
-    def recv_client(self) -> client:
+    def recv_client(self, safey) -> client:
         """
             Receives a client from server socket
             
@@ -419,5 +498,5 @@ class server (TCPsocket):
             OUTPUT: Client object
         """
         
-        c = client(self.server_socket_recv_client())
+        c = client(self.server_socket_recv_client(), safey)
         return c
