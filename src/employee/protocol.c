@@ -6,6 +6,8 @@
 
 #include "protocol.h"
 #include "headers.h"
+#include "transmition.h"
+#include "workqueue.h"
 
 /* Formats a message by protocol */
 int protocol_format(char *dst, const char *format, ...) {
@@ -30,4 +32,20 @@ int protocol_format(char *dst, const char *format, ...) {
   va_end(args);
 
   return ret_len;
+}
+
+/* Send message with formatted message */
+int protocol_send_message(const char *msg_type, const char *format, ...) {
+  char msg_buf[BUFFER_SIZE];
+  size_t msg_length;
+  va_list args;
+
+  va_start(args, format);
+  msg_length = protocol_format(msg_buf, format, msg_type, args);
+  va_end(args);
+
+  if (msg_length > 0)
+    workqueue_message(transmit_data, msg_buf, msg_length);
+
+  return 0;
 }

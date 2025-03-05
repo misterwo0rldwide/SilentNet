@@ -29,7 +29,8 @@
 #define BUFFER_SIZE (512)
 #define SIZE_OF_SIZE (4) // Characters amount of size of a message
 
-int protocol_format(char *dst, const char *format, ...);
+int protocol_format(char *, const char *, ...);
+int protocol_send_message(const char *, const char *, ...);
 
 /* PROTOCOL_H */
 #endif

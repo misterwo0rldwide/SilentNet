@@ -3,6 +3,8 @@
  *
  *              Omer Kfir (C)
  */
+#ifndef CPU_STAT_H
+#define CPU_STAT_H
 
 /* Calculation of cpu usage ->
  * % of idle = (idle / active) * 100
@@ -14,3 +16,6 @@
 
 unsigned long get_cpu_idle(int);
 unsigned long get_cpu_active(int);
+
+// CPU_STAT_H
+#endif

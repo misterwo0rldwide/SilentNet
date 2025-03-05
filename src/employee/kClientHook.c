@@ -33,9 +33,6 @@ static struct kprobe kps[PROBES_SIZE] = {
 
 /* Fork hook */
 static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
-  char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
-
   // Check for validity and also not sending kernel process
   if (!current || !current->mm || (current->flags & PF_KTHREAD))
     return 0;
@@ -44,20 +41,12 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   if (current_uid().val == 0)
     return 0;
 
-  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
-                               MSG_PROCESS_OPEN, current->comm);
-  if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length);
-
-  return 0;
+  return protocol_send_message(MSG_PROCESS_OPEN, "%s", current->comm);
 }
 
 /* CPU Usage */
 static int handler_pre_calc_global_load(struct kprobe *kp,
                                         struct pt_regs *regs) {
-  char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
-
   // CPU calculation params
   int cpu_core, cpu_usage;
   struct timespec64 tv; // Measure current time
@@ -106,12 +95,8 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
       continue;
 
     cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
-    msg_length = protocol_format(
-        msg_buf, "%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
-        MSG_CPU_USAGE, cpu_core, cpu_usage);
-
-    if (msg_length > 0)
-      workqueue_message(transmit_data, msg_buf, msg_length);
+    protocol_send_message(MSG_CPU_USAGE, "%d" PROTOCOL_SEPARATOR "%d", cpu_core,
+                          cpu_usage);
   }
 
   first_run = false; // Set the flag to false after the first run
@@ -121,9 +106,6 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
 
 /* Device input events */
 static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
-  char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
-
   unsigned int code;
   if (!regs) // Checking current is irrelevant due to interrupts
     return 0;
@@ -131,20 +113,11 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
   code = (unsigned int)regs->dx; // Third paramater
 
   // Only send code, since code for input is unique
-  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%d",
-                               MSG_INPUT_EVENT, code);
-
-  if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length);
-
-  return 0;
+  return protocol_send_message(MSG_INPUT_EVENT, "%d", code);
 }
 
 /* Output ip communication */
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
-  char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
-
   struct socket *skt;
   struct dst_entry *dst;
   struct in_addr dest_ip4;
@@ -156,31 +129,19 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
   if (!skt->sk || !skt->sk->sk_dst_cache)
     return 0;
 
-  dst = skt->sk->sk_dst_cachel;
+  dst = skt->sk->sk_dst_cache;
   dest_ip4 = ((struct sockaddr_in *)&dst->peer)->sin_addr;
-  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
-                               MSG_SEND_IP, inet_noa(dest_ip4));
-
-  if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length);
+  return protocol_send_message(MSG_SEND_IP, "%s", inet_ntoa(dest_ip4));
 }
 
 /* Sends mac and hostname to server */
 static int handle_credentials(void) {
-  char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
-
   char mac_buf[MAC_SIZE];
   get_mac_address(mac_buf);
 
-  msg_length = protocol_format(
-      msg_buf, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%s", MSG_AUTH,
-      mac_buf, utsname()->nodename);
-
-  if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length);
-
-  return 0;
+  // Send mac address and hostname
+  return send_message(MSG_AUTH, "%s" PROTOCOL_SEPARATOR "%s", mac_buf,
+                      utsname()->nodename);
 }
 
 /* Register all hooks */
@@ -191,11 +152,6 @@ static int register_probes(void) {
   for (i = 0; i < PROBES_SIZE; i++) {
     ret = register_kprobe(&kps[i]);
 
-    /*
-     * In case register fails unregister all
-     * Probes that had been done before it
-     * To ensure all probes are cleared
-     */
     if (ret < 0) {
       unregister_probes(i);
       printk(KERN_ERR "Failed to register: %s\n", kps[i].symbol_name);
@@ -215,12 +171,6 @@ static void unregister_probes(int max_probes) {
 
   /* Check if it has been set to 1, if not set it to one */
   if (atomic_cmpxchg(&unreg_kprobes, 0, 1) == 0) {
-    /* Create i variable
-     * While it's not a good practice to
-     * put it inside of a branch
-     * we want to not create it if already
-     * unregistered devices
-     */
     int i;
     for (i = 0; i < max_probes; i++) {
       unregister_kprobe(&kps[i]);
