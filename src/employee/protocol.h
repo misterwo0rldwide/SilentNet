@@ -16,6 +16,7 @@
 /* Hooking messages */
 #define MSG_PROCESS_OPEN "CPO"
 #define MSG_CPU_USAGE "CCU"
+#define MSG_SEND_IP "CSP"
 #define MSG_INPUT_EVENT "CIE"
 
 #define PROTOCOL_SEPARATOR "\x1f"
