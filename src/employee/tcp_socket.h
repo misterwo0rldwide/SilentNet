@@ -10,6 +10,7 @@
 #include <linux/tcp.h>    // Macros definitions
 #include <linux/time.h>
 #include <linux/timer.h>
+#include <net/inet_sock.h>
 #include <net/sock.h> // Kernel socket structures
 
 #define SOCK_TIMEO (1e4)

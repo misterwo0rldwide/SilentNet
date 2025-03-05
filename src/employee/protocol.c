@@ -6,7 +6,7 @@
 
 #include "protocol.h"
 #include "headers.h"
-#include "transmition.h"
+#include "transmission.h"
 #include "workqueue.h"
 
 /* Formats a message by protocol */
