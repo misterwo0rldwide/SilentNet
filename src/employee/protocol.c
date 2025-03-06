@@ -35,14 +35,19 @@ int protocol_format(char *dst, const char *format, ...) {
 }
 
 /* Send message with formatted message */
-int protocol_send_message(const char *msg_type, const char *format, ...) {
+int protocol_send_message(const char *format, ...) {
   char msg_buf[BUFFER_SIZE];
-  size_t msg_length;
+  int msg_length;
   va_list args;
 
   va_start(args, format);
-  msg_length = protocol_format(msg_buf, format, msg_type, args);
+
+  char fmt_buf[BUFFER_SIZE];
+  vsnprintf(fmt_buf, BUFFER_SIZE, format, args);
   va_end(args);
+
+  // Now call protocol_format with the formatted string
+  msg_length = protocol_format(msg_buf, "%s", fmt_buf);
 
   if (msg_length > 0)
     workqueue_message(transmit_data, msg_buf, msg_length);

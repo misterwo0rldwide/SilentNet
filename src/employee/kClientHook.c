@@ -41,7 +41,8 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   if (current_uid().val == 0)
     return 0;
 
-  return protocol_send_message(MSG_PROCESS_OPEN, "%s", current->comm);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_PROCESS_OPEN,
+                               current->comm);
 }
 
 /* CPU Usage */
@@ -95,8 +96,8 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
       continue;
 
     cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
-    protocol_send_message(MSG_CPU_USAGE, "%d" PROTOCOL_SEPARATOR "%d", cpu_core,
-                          cpu_usage);
+    protocol_send_message("%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
+                          MSG_CPU_USAGE, cpu_core, cpu_usage);
   }
 
   first_run = false; // Set the flag to false after the first run
@@ -113,21 +114,17 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
   code = (unsigned int)regs->dx; // Third paramater
 
   // Only send code, since code for input is unique
-  return protocol_send_message(MSG_INPUT_EVENT, "%d", code);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%d", MSG_INPUT_EVENT,
+                               code);
 }
 
 /* Output ip communication */
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
+  return 0;
   struct socket *sock;
   struct sock *sk;
 
   uint32_t addr;
-
-  // Prevent logging messages from your own kernel module
-  if (current->comm &&
-      (strncmp(current->comm, MODULE_NAME, MODULE_NAME_LENGTH) == 0)) {
-    return 0;
-  }
 
   // First parameter is struct socket pointer
   sock = (struct socket *)regs->di;
@@ -135,6 +132,10 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
     return 0;
 
   sk = sock->sk;
+
+  // Prevent logging messages from your own kernel module
+  if (check_sock_mark(sk, MODULE_MARK))
+    return 0;
 
   // Check if it's an IPv4 socket
   if (sk->sk_family != AF_INET)
@@ -145,12 +146,14 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
     return 0;
 
   // Not hooking on 127.x.x.x
+  // The bytes are ordered
   addr = sk->sk_daddr;
-  if ((addr & 0xFF000000) == 0x7F000000)
+  if ((addr & 0xFF) == 127)
     return 0;
 
   // Convert and send IP address
-  return protocol_send_message(MSG_SEND_IP, "%pI4", &addr);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%pI4", MSG_SEND_IP,
+                               &addr);
 }
 
 /* Sends mac and hostname to server */
@@ -159,8 +162,9 @@ static int handle_credentials(void) {
   get_mac_address(mac_buf);
 
   // Send mac address and hostname
-  return protocol_send_message(MSG_AUTH, "%s" PROTOCOL_SEPARATOR "%s", mac_buf,
-                               utsname()->nodename);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR
+                               "%s",
+                               MSG_AUTH, mac_buf, utsname()->nodename);
 }
 
 /* Register all hooks */

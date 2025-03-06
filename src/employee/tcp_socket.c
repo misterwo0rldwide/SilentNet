@@ -22,6 +22,9 @@ struct socket *tcp_sock_create(void) {
     return ERR_PTR(err);
   }
 
+  // Set mark on socket
+  sock_set_mark(sock->sk, MODULE_MARK);
+
   /* Set 0.5 second timeout for recv/connect/send */
   tv.tv_sec = 0;           // Seconds
   tv.tv_nsec = SOCK_TIMEO; // Nanoseconds
@@ -90,4 +93,12 @@ int tcp_send_msg(struct socket *sock, const char *msg, size_t length) {
 void tcp_sock_close(struct socket *sock) {
   if (sock)
     sock_release(sock);
+}
+
+/* Checks if socket has a certain mark */
+bool check_sock_mark(struct sock *sock, __u32 mark) {
+  if (!sock)
+    return false;
+
+  return sock->sk_mark == mark;
 }

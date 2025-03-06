@@ -26,11 +26,11 @@
 #define DEST_PORT (6734)
 
 /* Protocol buffer handling */
-#define BUFFER_SIZE (512)
+#define BUFFER_SIZE (1024 / 4)
 #define SIZE_OF_SIZE (4) // Characters amount of size of a message
 
 int protocol_format(char *, const char *, ...);
-int protocol_send_message(const char *, const char *, ...);
+int protocol_send_message(const char *, ...);
 
 /* PROTOCOL_H */
 #endif
