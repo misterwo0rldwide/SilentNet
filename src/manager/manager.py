@@ -9,7 +9,6 @@ import webbrowser
 import os
 import signal
 import json
-from functools import wraps
 from flask import Flask, redirect, render_template, request, jsonify, url_for
 
 # Append parent directory to be able to import protocol
@@ -39,7 +38,6 @@ previous_screen = None
 
 # Decorator to handle screen access and redirections
 def check_screen_access(f):
-    @wraps(f)
     def wrapper(*args, **kwargs):
         global current_screen, previous_screen
 
@@ -77,13 +75,13 @@ def page_not_found(error):
 def internal_error(error):
     return render_template("internal_error.html")
 
-@web_app.route("/exit")
 @check_screen_access
+@web_app.route("/exit")
 def exit_page():
     return render_template("exit_screen.html", previous_screen=previous_screen)
 
-@web_app.route("/loading")
 @check_screen_access
+@web_app.route("/loading")
 def loading_screen():
     # Ensure closing the socket if redirected to loading while socket is still up
     if manager_server_sock:
@@ -91,8 +89,8 @@ def loading_screen():
 
     return render_template("loading_screen.html")
 
-@web_app.route("/")
 @check_screen_access
+@web_app.route("/")
 def start_screen():
     password_incorrect = request.args.get('password_incorrect', 'false')
 
@@ -119,8 +117,8 @@ def check_password():
     
     return redirect(url_for("start_screen", password_incorrect='true'))
 
-@web_app.route("/settings")
 @check_screen_access
+@web_app.route("/settings")
 def settings_screen():
     return render_template("settings_screen.html")
 
@@ -132,8 +130,8 @@ def submit_settings():
     manager_server_sock.protocol_send(MessageParser.MANAGER_SND_SETTINGS, employees_amount, safety)
     return redirect(url_for("employees_screen"))
 
-@web_app.route("/employees")
 @check_screen_access
+@web_app.route("/employees")
 def employees_screen():
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
     connected_clients = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]
@@ -164,8 +162,8 @@ def update_client_name():
     else:
         return jsonify({"success": False, "message": "Name is already used"})
 
-@web_app.route("/stats_screen")
 @check_screen_access
+@web_app.route("/stats_screen")
 def stats_screen():
     client_name = request.args.get('client_name')
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
