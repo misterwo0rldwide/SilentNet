@@ -6,6 +6,8 @@
 #   Omer Kfir (C)
 
 import sys, threading, os, json
+from time import sleep
+from random import uniform
 
 # Append parent directory to be able to append protocol
 path = os.path.dirname(__file__)
@@ -54,6 +56,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         if msg.decode() == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
 
+        sleep(uniform(0, 0.1))
         client.protocol_send(ret_msg_type)
 
         if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
