@@ -4,103 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exit Confirmation</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #1e1e2f, #2a2a40); /* Dark gradient for consistency */
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 10.01%);
-            background-size: 20px 20px;
-            animation: moveBackground 10s infinite linear;
-            z-index: -1;
-        }
-
-        @keyframes moveBackground {
-            0% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-10px);
-            }
-            100% {
-                transform: translateY(0);
-            }
-        }
-
-        #exit-window {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .exit-btn, .cancel-btn {
-            margin-top: 20px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 500;
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .exit-btn {
-            background-color: #e74c3c; /* Red */
-        }
-
-        .exit-btn:hover {
-            background-color: #c0392b;
-        }
-
-        .cancel-btn {
-            background-color: #3b82f6; /* Blue */
-        }
-
-        .cancel-btn:hover {
-            background-color: #2563eb;
-        }
-
-        .previous-file {
-            margin-top: 15px;
-            font-size: 1rem;
-            color: #ccc;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/exit_screen.css') }}">
 </head>
 <body>
-
-<div id="exit-window">
-    <h2>Are you sure you want to exit the program?</h2>
-    <div class="button-group">
-        <button class="exit-btn" onclick="window.location.href='/exit-program'">Exit</button>
-        <button class="cancel-btn" onclick="window.location.href='{{ previous_screen }}'">No, Go Back</button>
+    <div id="exit-window">
+        <h2>Are you sure you want to exit the program?</h2>
+        <div class="button-group">
+            <button class="exit-btn" onclick="window.location.href='/exit-program'">Exit</button>
+            <button class="cancel-btn" onclick="window.location.href='{{ previous_screen }}'">No, Go Back</button>
+        </div>
     </div>
-</div>
-
 </body>
 </html>

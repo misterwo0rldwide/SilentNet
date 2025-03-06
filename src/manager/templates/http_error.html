@@ -4,70 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Page Not Found</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-            color: #343a40;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 600px;
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            font-size: 48px;
-            margin: 0 0 20px;
-            color: #dc3545;
-        }
-
-        p {
-            font-size: 18px;
-            margin: 0 0 20px;
-        }
-
-        a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .button {
-            display: inline-block;
-            padding: 10px 20px;
-            font-size: 16px;
-            color: #ffffff;
-            background-color: #007bff;
-            border-radius: 5px;
-            text-decoration: none;
-            transition: background-color 0.3s ease;
-            cursor: pointer;
-        }
-
-        .button:hover {
-            background-color: #0056b3;
-        }
-
-        .countdown {
-            font-size: 16px;
-            color: #6c757d;
-            margin-top: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/http_error.css">
 </head>
 <body>
     <div class="container">
@@ -77,32 +14,6 @@
         <p>You will be automatically redirected to the previous page in <span id="countdown">10</span> seconds.</p>
         <a href="#" class="button" id="redirectButton">Go to Previous page Now</a>
     </div>
-
-    <script>
-        // Countdown timer
-        let timeLeft = 10;
-        const countdownElement = document.getElementById('countdown');
-        const redirectButton = document.getElementById('redirectButton');
-
-        const redirectToLoadingScreen = () => {
-            window.location.href = "/loading";
-        };
-
-        const timer = setInterval(() => {
-            timeLeft--;
-            countdownElement.textContent = timeLeft;
-
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                redirectToLoadingScreen();
-            }
-        }, 1000);
-
-        redirectButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            clearInterval(timer);
-            redirectToLoadingScreen();
-        });
-    </script>
+    <script src="../js/http_error.js"></script>
 </body>
 </html>
