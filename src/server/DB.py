@@ -399,7 +399,23 @@ class UserLogsORM (DBHandler):
         total_inactive = sum(int(i[1]) for i in inactive_time if i != '' and len(i) > 1)
         total_active = self.__get_total_active_time(mac)
 
+        if total_active + total_inactive == 0:
+            return 100
+
         return int((total_active / (total_active + total_inactive)) * 100)
+    
+    def get_reached_out_ips(self, mac : str) -> list[str]:
+        """
+            Gets all the reached out IP addresses of a certain client
+
+            INPUT: mac
+            OUTPUT: List of strings of IP addresses
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"SELECT data, count FROM {self.table_name} WHERE mac = ? AND type = ?;"
+        return self.commit(command, mac, MessageParser.CLIENT_IP_INTERACTION)
 
 class UserId (DBHandler):
 

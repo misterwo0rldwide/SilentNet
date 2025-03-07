@@ -1,6 +1,6 @@
 const stats = {{ stats | tojson | safe }};
 
-let processChart, inactivityChart, cpuUsageChart;
+let processChart, inactivityChart, cpuUsageChart, ipsChart;
 const coreColors = {};
 
 function getRandomColor() {
@@ -185,6 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
                             return `${label}: ${value}%`;
                         }
                     }
+                }
+            }
+        }
+    });
+
+    // IPs Pie Chart
+    ipsChart = new Chart(document.getElementById('ipsChart'), {
+        type: 'pie',
+        data: {
+            labels: stats.ips.labels,
+            datasets: [{
+                data: stats.ips.data,
+                backgroundColor: stats.ips.labels.map(() => getRandomColor()),
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
                 }
             }
         }
@@ -376,6 +398,27 @@ function expandCard(card) {
                                 return `${label}: ${value}%`;
                             }
                         }
+                    }
+                }
+            }
+        });
+    } else if (card.id === 'ips') {
+        new Chart(expandedCard.querySelector('canvas'), {
+            type: 'pie',
+            data: {
+                labels: stats.ips.labels,
+                datasets: [{
+                    data: stats.ips.data,
+                    backgroundColor: stats.ips.labels.map(() => getRandomColor()),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
                     }
                 }
             }

@@ -120,7 +120,6 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
 
 /* Output ip communication */
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
-  return 0;
   struct socket *sock;
   struct sock *sk;
 

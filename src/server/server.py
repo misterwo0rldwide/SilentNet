@@ -56,7 +56,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         if msg.decode() == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
 
-        sleep(uniform(0, 0.1))
+        sleep(uniform(0, 0.05))
         client.protocol_send(ret_msg_type)
 
         if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
@@ -152,8 +152,11 @@ def get_client_stats(client_name : str) -> str:
     process_cnt = log_data_base.get_process_count(mac_addr)
     inactive_times, inactive_after_last = log_data_base.get_inactive_times(mac_addr)
     words_per_min = int(log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
+
     cpu_usage = log_data_base.get_cpu_usage(mac_addr)
     core_usage = group_core_usage(cpu_usage)
+
+    ip_cnt = log_data_base.get_reached_out_ips(mac_addr)
 
     # Insert data into json format for manager
     data = {
@@ -172,6 +175,10 @@ def get_client_stats(client_name : str) -> str:
                 "cores": sorted(list(core_usage.keys())),
                 "usage": [core_usage[core] for core in sorted(core_usage.keys())]
             }
+        },
+        "ips": {
+            "labels": [i[0].decode() for i in ip_cnt],
+            "data": [i[1] for i in ip_cnt]
         }
     }
     
