@@ -456,7 +456,6 @@ class server (TCPsocket):
         # Bind socket and set max listen
         self.create_server_socket(self.SERVER_BIND_IP, self.SERVER_BIND_PORT, server_listen)
     
-    
     def recv_client(self, safey) -> client:
         """
             Receives a client from server socket

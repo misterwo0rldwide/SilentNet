@@ -1,5 +1,3 @@
-const stats = {{ stats | tojson | safe }};
-
 let processChart, inactivityChart, cpuUsageChart, ipsChart;
 const coreColors = {};
 

@@ -57,6 +57,11 @@
     <div class="expanded-card" id="expandedCard">
         <button class="close-btn" onclick="closeExpandedCard()">X</button>
     </div>
+
+    <script type="text/javascript">
+        const stats = {{ stats | tojson | safe }};
+    </script>
+
     <script src="{{ url_for('static', filename='js/stats_screen.js') }}"></script>
 </body>
 </html>
