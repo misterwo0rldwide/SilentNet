@@ -433,10 +433,6 @@ def main():
     finally:
         # Clean up resources
         server_comm.close()
-        
-        # Clean up database
-        log_data_base.delete_records_DB()
-        uid_data_base.delete_records_DB()
         DBHandler.close_DB(conn, cursor)
         
         # Clean up client connections

@@ -87,6 +87,9 @@ class DBHandler():
         """
         command = f"DELETE FROM {self.table_name}"
         self.commit(command)
+
+        command = "VACUUM"
+        self.commit(command)
     
     def commit(self, command: str, *command_args):
         """
