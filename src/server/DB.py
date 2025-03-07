@@ -66,13 +66,17 @@ class DBHandler():
     @staticmethod
     def close_DB(cursor, conn):
         """
-            Closes connection to database
+        Closes connection to database
 
-            INPUT: cursor, conn
-            OUTPUT: None
+        INPUT: cursor, conn
+        OUTPUT: None
         """
-        cursor.close()
-        conn.close()
+        try:
+            if conn:  # Check if the connection is still open
+                cursor.close()
+                conn.close()
+        except Exception as e:
+            pass
     
     def delete_records_DB(self):
         """

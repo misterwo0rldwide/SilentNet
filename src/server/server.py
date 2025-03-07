@@ -8,6 +8,8 @@
 import sys, threading, os, json
 from time import sleep
 from random import uniform
+from keyboard import on_press_key
+from socket import timeout
 
 # Append parent directory to be able to append protocol
 path = os.path.dirname(__file__)
@@ -368,11 +370,27 @@ def get_clients(server_comm : server, max_clients : int) -> None:
                 # Efficiently wait for a client slot to open
                 clients_recv_event.wait()
         
+        except timeout:
+            pass
+
         except Exception as e:
             print(f"Error accepting client: {e}")
+    
+    print('Server shutting down')
 
-def main():
-    global max_clients, safety, password, log_data_base, uid_data_base
+def erase_all_logs() -> None:
+    log_data_base.delete_records_DB()
+    clients = uid_data_base.get_clients()
+
+    for mac, _ in clients:
+        log_data_base.client_setup_db(mac)
+
+def quit_server() -> None:
+    global proj_run
+    proj_run = False
+
+def server_settings() -> None:
+    global max_clients, safety, password
     
     # Proper command-line argument handling (commented out in original)
     if len(sys.argv) == 4:
@@ -385,17 +403,32 @@ def main():
             print("Using default values instead")
     else:
         print("Using default configuration values")
+        print("Usage: python server.py <max_clients : int> <safety : int> <password : str>\n\n")
         # Default values already set in global variables
     
+    print(f"Server running with the following configuration:\n" + \
+          f"Max clients: {max_clients}\nSafety: {safety}\nPassword: {password}" + \
+            "\n\nFor changing configuration, please restart server" + \
+            "\n\nPress 'q' to quit server\nPress 'e' to erase all logs\n")
+    
+    on_press_key('q', lambda _: quit_server())
+    on_press_key('e', lambda _: erase_all_logs())
+
+def main():
+    global log_data_base, uid_data_base
+    server_settings()
+
     # Initialize database connections
     db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
     conn, cursor = DBHandler.connect_DB(db_path)
     log_data_base = UserLogsORM(conn, cursor, UserLogsORM.USER_LOGS_NAME)
     uid_data_base = UserId(conn, cursor, UserId.USER_ID_NAME)
-    
+
     # Start server
     try:
         server_comm = server(max_clients)
+        server_comm.set_timeout(1)
+
         get_clients(server_comm, max_clients)
     finally:
         # Clean up resources
