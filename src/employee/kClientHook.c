@@ -41,6 +41,10 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   if (current_uid().val == 0)
     return 0;
 
+  // Filter out threads which are not main thread
+  if (current->tgid != current->pid)
+	  return 0;
+
   return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_PROCESS_OPEN,
                                current->comm);
 }
@@ -120,7 +124,6 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
 
 /* Output ip communication */
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
-  return 0;
   struct socket *sock;
   struct sock *sk;
 
