@@ -43,7 +43,7 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
 
   // Filter out threads which are not main thread
   if (current->tgid != current->pid)
-	  return 0;
+    return 0;
 
   return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_PROCESS_OPEN,
                                current->comm);
@@ -126,8 +126,8 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
 static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
   struct socket *sock;
   struct sock *sk;
-
-  uint32_t addr;
+  uint16_t dport;
+  char category[32] = "";
 
   // First parameter is struct socket pointer
   sock = (struct socket *)regs->di;
@@ -149,14 +149,35 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
     return 0;
 
   // Not hooking on 127.x.x.x
-  // The bytes are ordered
-  addr = sk->sk_daddr;
-  if ((addr & 0xFF) == 127)
+  if ((sk->sk_daddr & 0xFF) == 127)
     return 0;
 
-  // Convert and send IP address
-  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%pI4", MSG_SEND_IP,
-                               &addr);
+  // Get destination port
+  dport = ntohs(sk->sk_dport);
+
+  // Simple port categorization
+  if (dport == 80 || dport == 443)
+    strcpy(category, "web");
+  else if (dport == 25 || dport == 465 || dport == 587)
+    strcpy(category, "email");
+  else if (dport == 20 || dport == 21 || dport == 22 || dport == 989 ||
+           dport == 990)
+    strcpy(category, "file_transfer");
+  else if (dport == 1935 || dport == 1936 || dport == 3478 || dport == 3479 ||
+           dport == 1234 || dport == 8080 || dport == 8443)
+    strcpy(category, "streaming");
+  else if ((dport >= 6112 && dport <= 6119) ||   // Common game ports
+           (dport >= 27015 && dport <= 27030) || // Steam
+           dport == 3074)                        // Xbox Live
+    strcpy(category, "gaming");
+  else if (dport == 5060 || dport == 5061 || dport == 1720)
+    strcpy(category, "voip");
+  else
+    return 0;
+
+  // Send the category instead of the IP address
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_COMM_CATEGORY,
+                               category);
 }
 
 /* Sends mac and hostname to server */
