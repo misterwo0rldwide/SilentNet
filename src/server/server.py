@@ -131,8 +131,7 @@ def group_core_usage(cpu_usage : list) -> dict:
     
     core_usage = {}
     for log in cpu_usage:
-        core = log[0]
-        usage = log[1]
+        core, usage = log
 
         if core not in core_usage:
             core_usage[core] = []

@@ -104,7 +104,6 @@ class AESHandler:
         cipher = AES.new(self.key, AES.MODE_CBC, iv)
         
         cipher_text = cipher.encrypt(pad(data, AES.block_size))
-
         return iv + cipher_text
 
     def decrypt(self, encrypted_data: bytes) -> bytes:
