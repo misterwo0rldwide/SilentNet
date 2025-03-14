@@ -2,11 +2,14 @@
 #   
 #       Contains main message types and 
 #       Socket handling
+#       Encrypted protocol
 #
 #   Omer Kfir (C)
 
 import socket
+from encryption import EncryptionHandler
 from typing import Optional, Tuple, Union
+from random import randint
 
 __author__ = "Omer Kfir"
 
@@ -320,7 +323,7 @@ class TCPsocket:
 
 class client (TCPsocket):
     
-    def __init__(self, sock: Optional[socket.socket] = None, safety: int = 10):
+    def __init__(self, sock: Optional[socket.socket] = None, safety: int = 10, manager: bool = False):
         """
             Create the client side socket
             socket type: TCP
@@ -340,6 +343,16 @@ class client (TCPsocket):
         # Unsafe message counter
         self.__unsafe_msg_cnt = 0
         self.__unsafe_max = safety
+
+        # Encryption handler
+        self.__encryption = ...
+
+        # If its a manager object then only build base for encryption
+        if manager:
+            self.__encryption = EncryptionHandler(randint(2, 25), randint(2, 10))
+        else:
+            # Otherwise already exchange keys
+            self.exchange_keys()
     
     def set_address(self, mac_addr) -> None:
         """
@@ -363,9 +376,26 @@ class client (TCPsocket):
         
         return self.__mac
     
+    def exchange_keys(self) -> None:
+        """
+            Exchange keys between client and server
+            
+            INPUT: None
+            OUTPUT: None
+        """
+        if self.__encryption is not Ellipsis:
+            # If client is a manager object
+            self.protocol_send(*self.__encryption.get_base_prime())
+        else:
+            # If client is a server object
+            self.__encryption = EncryptionHandler(*self.protocol_recv())
+
+        self.protocol_send(self.__encryption.dh.get_public_key())
+        self.__encryption.dh.generate_shared_secret(self.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
+
     def connect(self, dst_ip : str, dst_port : int) -> bool:
         """
-            Connect client to server
+            Connect client to server and exchange keys
             
             INPUT: dst_ip, dst_port
             OUTPUT: Boolean value which indicated wether managed to connect
@@ -376,9 +406,10 @@ class client (TCPsocket):
         
         try:
             self.client_socket_connect_server(dst_ip, dst_port)
+            self.exchange_keys()
             return True
         
-        except (ConnectionRefusedError, socket.timeout):
+        except:
             self.log("Error", "Failed to connect to server")
             self.close()
 
@@ -394,7 +425,7 @@ class client (TCPsocket):
             @part_split -> Number of fields to seperate from start of message
         """
         
-        data = MessageParser.protocol_message_deconstruct(self.recv(), part_split)
+        data = MessageParser.protocol_message_deconstruct(self.__encryption.decrypt(self.recv()), part_split)
         return data
         
     def protocol_send(self, msg_type, *args) -> None:
@@ -409,7 +440,7 @@ class client (TCPsocket):
         """
 
         constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
-        self.send(constr_msg)
+        self.send(self.__encryption.encrypt(constr_msg))
 
     def unsafe_msg_cnt_inc(self) -> bool:
         """
@@ -418,13 +449,8 @@ class client (TCPsocket):
             INPUT: None
             OUTPUT: boolean value
         """
-        
         self.__unsafe_msg_cnt += 1
-
-        if self.__unsafe_msg_cnt > self.__unsafe_max:
-            return True
-        
-        return False
+        return self.__unsafe_msg_cnt > self.__unsafe_max
 
     def reset_unsafe_msg_cnt(self) -> None:
         """
@@ -435,7 +461,7 @@ class client (TCPsocket):
         """
         
         self.__unsafe_msg_cnt = 0
-    
+
 
 class server (TCPsocket):
     SERVER_BIND_IP   = "0.0.0.0"

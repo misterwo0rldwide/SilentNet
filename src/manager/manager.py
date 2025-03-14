@@ -182,7 +182,7 @@ def attempt_server_connection() -> bool:
     """
     global manager_server_sock, manager_connected
 
-    manager_server_sock = client()
+    manager_server_sock = client(manager = True)
     manager_connected = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
     
     if manager_connected:

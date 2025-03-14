@@ -130,18 +130,27 @@ class EncryptionHandler:
         Main class to handle all encryption tasks
     """
 
-    def __init__(self, prime: int, base: int):
+    def __init__(self, prime: int = None, base: int = None):
         """
             Initialize EncryptionHandler with prime and base for DH
 
             INPUT: prime, base
             OUTPUT: None
 
-            @prime -> Prime number for Diffie-Hellman
-            @base -> Base number for Diffie-Hellman
+            @prime -> Prime number for DH
+            @base -> Base number for DH
         """
         self.dh = DiffieHellman(prime, base)
         self.aes_handler = None
+    
+    def get_base_prime(self) -> tuple[int, int]:
+        """
+            Returns the base and prime for Diffie-Hellman
+
+            INPUT: None
+            OUTPUT: Tuple of base and prime (int, int)
+        """
+        return self.dh.base, self.dh.prime
 
     def get_public_key(self) -> int:
         """
