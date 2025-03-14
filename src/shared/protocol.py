@@ -22,6 +22,8 @@ class MessageParser:
 
     SIG_MSG_INDEX = 0
 
+    ENCRYPTION_EXCHANGE = "EXH"
+
     # Message types
     CLIENT_MSG_SIG = "C"
     CLIENT_MSG_AUTH = "CAU"
@@ -63,11 +65,11 @@ class MessageParser:
     """
     
     @staticmethod
-    def encode_str(msg : Union[bytes, str]) -> bytes:
+    def encode_str(msg) -> bytes:
         """ Encodes a message """
     
-        if type(msg) == str:
-            msg = msg.encode()
+        if type(msg) is not bytes:
+            msg = str(msg).encode()
         
         return msg
     
@@ -349,7 +351,7 @@ class client (TCPsocket):
 
         # If its a manager object then only build base for encryption
         if manager:
-            self.__encryption = EncryptionHandler(randint(2, 25), randint(2, 10))
+            self.__encryption = EncryptionHandler(randint(2, 10), randint(10, 25))
         else:
             # Otherwise already exchange keys
             self.exchange_keys()
@@ -385,13 +387,14 @@ class client (TCPsocket):
         """
         if self.__encryption is not Ellipsis:
             # If client is a manager object
-            self.protocol_send(*self.__encryption.get_base_prime())
+            self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
         else:
             # If client is a server object
-            self.__encryption = EncryptionHandler(*self.protocol_recv())
+            data = self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX:]
+            self.__encryption = EncryptionHandler(int(data[0]), int(data[1]))
 
-        self.protocol_send(self.__encryption.dh.get_public_key())
-        self.__encryption.dh.generate_shared_secret(self.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
+        self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
+        self.__encryption.generate_shared_secret(int(self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX]))
 
     def connect(self, dst_ip : str, dst_port : int) -> bool:
         """
@@ -415,7 +418,7 @@ class client (TCPsocket):
 
             return False
     
-    def protocol_recv(self, part_split : int = -1) -> list[bytes]:
+    def protocol_recv(self, part_split : int = -1, decrypt: bool = True) -> list[bytes]:
         """
             Recevies data from connected side and splits it by protocol
             
@@ -424,11 +427,17 @@ class client (TCPsocket):
 
             @part_split -> Number of fields to seperate from start of message
         """
+        data = self.recv()
+        if data == b'':
+            return data
         
-        data = MessageParser.protocol_message_deconstruct(self.__encryption.decrypt(self.recv()), part_split)
+        if decrypt:
+            data = self.__encryption.decrypt(data)
+
+        data = MessageParser.protocol_message_deconstruct(data, part_split)
         return data
         
-    def protocol_send(self, msg_type, *args) -> None:
+    def protocol_send(self, msg_type, *args, encrypt: bool = True) -> None:
         """
             Sends a message constructed by protocll
             
@@ -440,7 +449,10 @@ class client (TCPsocket):
         """
 
         constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
-        self.send(self.__encryption.encrypt(constr_msg))
+        if encrypt:
+            constr_msg = self.__encryption.encrypt(constr_msg)
+        
+        self.send(constr_msg)
 
     def unsafe_msg_cnt_inc(self) -> bool:
         """

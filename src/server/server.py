@@ -207,7 +207,6 @@ def process_manager_request(client : client) -> None:
             manager_disconnect = False
 
             data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-
             if data == b'':
                 break
 

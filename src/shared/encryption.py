@@ -130,7 +130,7 @@ class EncryptionHandler:
         Main class to handle all encryption tasks
     """
 
-    def __init__(self, prime: int = None, base: int = None):
+    def __init__(self, base: int = None, prime: int = None):
         """
             Initialize EncryptionHandler with prime and base for DH
 
@@ -172,8 +172,12 @@ class EncryptionHandler:
         """
         shared_secret = self.dh.get_shared_secret(other_public_key)
 
-        # Derive a 128-bit key from the shared secret using SHA-256
-        self.aes_handler = AESHandler(hashlib.sha256(str(shared_secret).encode()).digest())
+        # Ensure shared_secret is in bytes before hashing
+        shared_secret_bytes = shared_secret.to_bytes((shared_secret.bit_length() + 7) // 8, byteorder="little")
+        derived_key = hashlib.sha256(shared_secret_bytes).digest()
+
+        # Use the derived key for AES
+        self.aes_handler = AESHandler(derived_key)
 
     def encrypt(self, data: Union[bytes, str]) -> bytes:
         """
