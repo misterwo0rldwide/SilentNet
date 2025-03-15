@@ -9,6 +9,18 @@
 #include "tcp_socket.h"
 #include "headers.h"
 
+/* IPV4 tcp connection */
+#include <linux/errno.h>
+#include <linux/in.h>     // IP structures
+#include <linux/inet.h>   // Internet addresses manipulatutions
+#include <linux/net.h>    // Kernel functions for network
+#include <linux/socket.h> // Kernel socket structure
+#include <linux/tcp.h>    // Macros definitions
+#include <linux/time.h>
+#include <linux/timer.h>
+#include <net/inet_sock.h>
+#include <net/sock.h> // Kernel socket structures
+
 /* Initialize a TCP struct socket */
 struct socket *tcp_sock_create(void) {
   struct socket *sock;

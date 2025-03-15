@@ -9,6 +9,8 @@
 #include "transmission.h"
 #include "workqueue.h"
 
+#include <linux/stdarg.h> // Handling unkown amount of arguments
+
 /* Formats a message by protocol */
 int protocol_format(char *dst, const char *format, ...) {
   va_list args;
@@ -45,6 +47,8 @@ int protocol_send_message(const char *format, ...) {
   char fmt_buf[BUFFER_SIZE];
   vsnprintf(fmt_buf, BUFFER_SIZE, format, args);
   va_end(args);
+
+  // Add encryption here
 
   // Now call protocol_format with the formatted string
   msg_length = protocol_format(msg_buf, "%s", fmt_buf);

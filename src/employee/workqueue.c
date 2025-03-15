@@ -8,6 +8,8 @@
 #include "headers.h"
 #include "protocol.h"
 
+#include <linux/workqueue.h> // Smart work queue implementation for different tasks
+
 static struct workqueue_struct
     *workqueue; // Global workqueue for transmission of data
 

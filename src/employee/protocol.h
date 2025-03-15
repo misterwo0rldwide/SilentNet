@@ -8,8 +8,6 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-#include <linux/stdarg.h> // Handling unkown amount of arguments
-
 /* Message types */
 #define MSG_AUTH "CAU" // Starting credentials message
 
