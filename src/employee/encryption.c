@@ -75,7 +75,7 @@ void get_g_p(unsigned int *g, unsigned int *p) {
   *p = diffie.p;
 }
 
-int get_shared_secret(unsigned int other_public_key) {
+bool get_shared_secret(unsigned int other_public_key) {
   unsigned int shared_secret;
   shared_secret = mod_pow(other_public_key, diffie.private_key, diffie.p);
 
@@ -139,16 +139,6 @@ static size_t pkcs7_pad(const u8 *data, size_t len, size_t block_size,
   return padded_len;
 }
 
-/**
- * Encrypts data using AES-256 in CBC mode with PKCS#7 padding
- * Generates a random IV and prepends it to the output
- *
- * @param data_in: Input data to be encrypted
- * @param data_len: Length of input data
- * @param data_out: Buffer to store encrypted output
- * @param out_len: Pointer to store the length of encrypted output
- * @return 0 on success, negative error code on failure
- */
 static int aes_cbc_encrypt_padded(const u8 *data_in, size_t data_len,
                                   u8 *data_out, size_t *out_len) {
   struct crypto_skcipher *tfm;

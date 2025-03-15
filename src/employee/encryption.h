@@ -13,7 +13,7 @@
 unsigned int randint(unsigned int, unsigned int);
 unsigned int mod_pow(unsigned int, unsigned int, unsigned int);
 void generate_diffie_numbers();
-int get_shared_secret(unsigned int);
+bool get_shared_secret(unsigned int);
 int derive_key_from_secret(unsigned int, u8 *);
 static size_t pkcs7_pad(const u8 *, size_t, size_t, u8 *);
 int aes_cbc_encrypt_padded(const u8 *, size_t, u8 *, size_t *);
