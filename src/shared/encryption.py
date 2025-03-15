@@ -84,7 +84,7 @@ class AESHandler:
             @key -> AES key (bytes)
         """
         if key is None:
-            self.key = get_random_bytes(16)  # 128-bit key
+            self.key = get_random_bytes(32)  # 256-bit key
         else:
             self.key = key
 
