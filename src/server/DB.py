@@ -375,12 +375,12 @@ class UserLogsORM (DBHandler):
 
         return words_cnt // active_time
     
-    def get_cpu_usage(self, mac : str) -> list[tuple[int, int, datetime]]:
+    def get_cpu_usage(self, mac : str):
         """
             Gets all logs of cpu usage
 
             INPUT: mac
-            OUTPUT: List of Tuples of the cpu core number and usage of it and time it was logged
+            OUTPUT: Tuple of Dictionary of cpu cores and their usages and list of times of logs
 
             @mac: MAC address of user's computer
         """
@@ -388,7 +388,18 @@ class UserLogsORM (DBHandler):
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
         cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split("~")
 
-        return [i.split(",") for i in cpu_logs][:-1] # Ignore last index since it is empty
+        cpu_logs = [i.split(",") for i in cpu_logs][:-1] # Ignore last index since it is empty
+        cpu_usage_logs = [i[2] for i in cpu_logs if len(i) > 2]
+        
+        core_usage = {}
+        for log in cpu_logs:
+            core, usage = log
+
+            if core not in core_usage:
+                core_usage[core] = []
+            core_usage[core].append(int(usage))
+        
+        return core_usage, cpu_usage_logs
 
     def get_active_precentage(self, mac : str) -> int:
         """

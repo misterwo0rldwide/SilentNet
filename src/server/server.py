@@ -119,26 +119,6 @@ def process_client_data(client : client) -> None:
             if disconnect:
                 break
 
-def group_core_usage(cpu_usage : list) -> dict:
-    """
-        Groups all log on a core to core number with hashmap
-        
-        INPUT: cpu_usage
-        OUTPUT: Dictionary of core number to list of usages
-        
-        @cpu_usage -> List of logs of cpu usage (core, usage)
-    """
-    
-    core_usage = {}
-    for log in cpu_usage:
-        core, usage = log
-
-        if core not in core_usage:
-            core_usage[core] = []
-        core_usage[core].append(int(usage))
-    
-    return core_usage
-
 def get_client_stats(client_name : str) -> str:
     """
         Gets all avaliable stats on a client
@@ -154,9 +134,7 @@ def get_client_stats(client_name : str) -> str:
     inactive_times, inactive_after_last = log_data_base.get_inactive_times(mac_addr)
     words_per_min = int(log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
 
-    cpu_usage = log_data_base.get_cpu_usage(mac_addr)
-    core_usage = group_core_usage(cpu_usage)
-
+    core_usage, cpu_usage = log_data_base.get_cpu_usage(mac_addr)
     ip_cnt = log_data_base.get_reached_out_ips(mac_addr)
 
     # Insert data into json format for manager
@@ -171,7 +149,7 @@ def get_client_stats(client_name : str) -> str:
         },
         "wpm": words_per_min,
         "cpu_usage": {
-            "labels": [i[2] for i in cpu_usage if len(i) > 2],
+            "labels": cpu_usage,
             "data": {
                 "cores": sorted(list(core_usage.keys())),
                 "usage": [core_usage[core] for core in sorted(core_usage.keys())]
