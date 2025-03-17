@@ -58,6 +58,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         if msg.decode() == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
 
+        # Prevent timing attack
         sleep(uniform(0, 0.05))
         client.protocol_send(ret_msg_type)
 
