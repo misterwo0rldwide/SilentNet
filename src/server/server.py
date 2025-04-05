@@ -56,6 +56,11 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
     if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
         ret_msg_type = MessageParser.MANAGER_INVALID_CONN
 
+        # Only encrypt for manager, so then only exchange keys
+        # After manager is connected
+        client.exchange_keys()
+        msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)[MessageParser.PROTOCOL_DATA_INDEX - 1]
+
         if msg.decode() == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
             manager_connected = True
@@ -301,7 +306,7 @@ def manage_comm(client : client) -> None:
     """
     global clients_connected, manager_connected
 
-    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
     # Check if valid msg
     if data == b'':
         remove_disconnected_client(client)
@@ -322,7 +327,7 @@ def manage_comm(client : client) -> None:
         return
 
     # Check if manager or client
-    if determine_client_type(client, msg_type, data[1]):
+    if determine_client_type(client, msg_type, data[1] if len(data) > 1 else b''):
         manager_connected = False # Function finishes when communication ends so if manager is not connected, set to false
 
     # Always clean up disconnected client

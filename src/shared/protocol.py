@@ -353,9 +353,6 @@ class client (TCPsocket):
         # If its a manager object then only build base for encryption
         if manager:
             self.__encryption = EncryptionHandler(randint(2, 80), randint(10, 80))
-        else:
-            # Otherwise already exchange keys
-            self.exchange_keys()
     
     def set_address(self, mac_addr) -> None:
         """
@@ -410,7 +407,6 @@ class client (TCPsocket):
         
         try:
             self.client_socket_connect_server(dst_ip, dst_port)
-            self.exchange_keys()
             return True
         
         except:
@@ -505,7 +501,7 @@ class server (TCPsocket):
         # Bind socket and set max listen
         self.create_server_socket(self.SERVER_BIND_IP, self.SERVER_BIND_PORT, server_listen)
     
-    def recv_client(self, safey) -> client:
+    def recv_client(self, safety) -> client:
         """
             Receives a client from server socket
             
@@ -513,5 +509,5 @@ class server (TCPsocket):
             OUTPUT: Client object
         """
         
-        c = client(self.server_socket_recv_client(), safey)
+        c = client(self.server_socket_recv_client(), safety)
         return c

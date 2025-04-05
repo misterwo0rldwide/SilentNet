@@ -103,8 +103,15 @@ def start_screen():
 @web_app.route('/check_password', methods=['POST'])
 def check_password():
     password = request.form.get('password')
-    manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, password)
-    
+
+    # Split password sending into two parts, first one is to notice server of manager trying to connect
+    # And then key exchange and password sending
+
+    manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD,  encrypt=False)
+
+    manager_server_sock.exchange_keys()
+    manager_server_sock.protocol_send(password)
+
     valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
