@@ -7,6 +7,11 @@
 #ifndef TRANSMISSION_H
 #define TRANSMISSION_H
 
+#include "headers.h"
+#include "protocol.h"
+#include "tcp_socket.h"
+#include "workqueue.h"
+
 void transmit_data(struct work_struct *);
 void data_transmission_init(void);
 void data_transmission_release(void);

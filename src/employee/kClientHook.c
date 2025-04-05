@@ -45,8 +45,8 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   if (current->tgid != current->pid)
     return 0;
 
-  return protocol_send_message(true, "%s" PROTOCOL_SEPARATOR "%s",
-                               MSG_PROCESS_OPEN, current->comm);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_PROCESS_OPEN,
+                               current->comm);
 }
 
 /* CPU Usage */
@@ -100,8 +100,7 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
       continue;
 
     cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
-    protocol_send_message(true,
-                          "%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
+    protocol_send_message("%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
                           MSG_CPU_USAGE, cpu_core, cpu_usage);
   }
 
@@ -119,8 +118,8 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
   code = (unsigned int)regs->dx; // Third paramater
 
   // Only send code, since code for input is unique
-  return protocol_send_message(true, "%s" PROTOCOL_SEPARATOR "%d",
-                               MSG_INPUT_EVENT, code);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%d", MSG_INPUT_EVENT,
+                               code);
 }
 
 /* Output ip communication */
@@ -177,8 +176,8 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
     return 0;
 
   // Send the category instead of the IP address
-  return protocol_send_message(true, "%s" PROTOCOL_SEPARATOR "%s",
-                               MSG_COMM_CATEGORY, category);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_COMM_CATEGORY,
+                               category);
 }
 
 /* Sends mac and hostname to server */
@@ -187,9 +186,9 @@ static int handle_credentials(void) {
   get_mac_address(mac_buf);
 
   // Send mac address and hostname
-  return protocol_send_message(
-      true, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%s", MSG_AUTH,
-      mac_buf, utsname()->nodename);
+  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR
+                               "%s",
+                               MSG_AUTH, mac_buf, utsname()->nodename);
 }
 
 /* Register all hooks */

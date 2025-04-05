@@ -28,7 +28,7 @@
 #define SIZE_OF_SIZE (4) // Characters amount of size of a message
 
 int protocol_format(char *, const char *, ...);
-int protocol_send_message(bool, const char *, ...);
+int protocol_send_message(const char *, ...);
 
 /* PROTOCOL_H */
 #endif
