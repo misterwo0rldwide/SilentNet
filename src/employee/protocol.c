@@ -37,7 +37,7 @@ int protocol_format(char *dst, const char *format, ...) {
 }
 
 /* Send message with formatted message */
-int protocol_send_message(bool encrypt, const char *format, ...) {
+int protocol_send_message(const char *format, ...) {
   char msg_buf[BUFFER_SIZE];
   int msg_length;
   va_list args;
@@ -52,7 +52,7 @@ int protocol_send_message(bool encrypt, const char *format, ...) {
   msg_length = protocol_format(msg_buf, "%s", fmt_buf);
 
   if (msg_length > 0)
-    workqueue_message(transmit_data, msg_buf, msg_length, encrypt);
+    workqueue_message(transmit_data, msg_buf, msg_length);
 
   return 0;
 }

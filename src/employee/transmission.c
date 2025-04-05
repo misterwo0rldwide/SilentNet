@@ -6,10 +6,6 @@
  */
 
 #include "transmission.h"
-#include "headers.h"
-#include "protocol.h"
-#include "tcp_socket.h"
-#include "workqueue.h"
 
 static struct socket *sock;    // Struct socket
 static bool connected = false; // Boolean which indicates if currently connected
@@ -39,9 +35,6 @@ void transmit_data(struct work_struct *work) {
     connected = true;
   }
 
-  if (curr_msg->encrypt) {
-  }
-  // Add encyption logic
   ret = tcp_send_msg(sock, curr_msg->msg_buf, curr_msg->length);
   if (ret < 0) {
     connected = false;

@@ -5,10 +5,6 @@
  */
 
 #include "workqueue.h"
-#include "headers.h"
-#include "protocol.h"
-
-#include <linux/workqueue.h> // Smart work queue implementation for different tasks
 
 static struct workqueue_struct
     *workqueue; // Global workqueue for transmission of data
@@ -39,7 +35,7 @@ void release_singlethread_workqueue(void) {
 
 /* Queue a new message to be sent */
 void workqueue_message(void (*queued_function)(struct work_struct *),
-                       const char *msg, size_t length, bool encrypt) {
+                       const char *msg, size_t length) {
   struct wq_msg *work;
 
   /* Because we are only able to send the pointer to work_struct
@@ -57,7 +53,6 @@ void workqueue_message(void (*queued_function)(struct work_struct *),
   /* Copy data to wq_msg metadata */
   work->length = min(length, BUFFER_SIZE - 1);
   memcpy(work->msg_buf, msg, work->length);
-  work->encrypt = encrypt;
 
   /* Push work to workqueue - thread safe function (dont worry :) )*/
   if (!queue_work(workqueue, &work->work))
