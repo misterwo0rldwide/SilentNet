@@ -308,6 +308,18 @@ def manage_comm(client : client) -> None:
         return
     
     msg_type = data[0].decode()
+    if len(clients_connected) >= max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
+        # If client is not manager and max_clients reached, disconnect
+
+        remove_disconnected_client(client)
+        return
+
+    if msg_type == MessageParser.MANAGER_MSG_PASSWORD and manager_connected:
+        # If manager is already connected, disconnect new manager
+
+        client.protocol_send(MessageParser.MANAGER_ALREADY_CONNECTED)
+        remove_disconnected_client(client)
+        return
 
     # Check if manager or client
     if determine_client_type(client, msg_type, data[1]):
@@ -332,7 +344,7 @@ def get_clients(server_comm : server, max_clients : int) -> None:
     while proj_run:
         try:
             # Check if we can accept more clients
-            if len(clients_connected) < max_clients and manager_connected:
+            if len(clients_connected) < max_clients or not manager_connected:
                 # Accept new client
                 client = server_comm.recv_client(safety)
                 clients_thread = threading.Thread(target=manage_comm, args=(client,))

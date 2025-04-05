@@ -57,6 +57,7 @@ class MessageParser:
     MANAGER_MSG_PASSWORD = "MMP"
     MANAGER_INVALID_CONN = "MIC"
     MANAGER_VALID_CONN = "MVC"
+    MANAGER_ALREADY_CONNECTED = "MAC"
 
 
     """

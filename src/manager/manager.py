@@ -109,6 +109,9 @@ def check_password():
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
     
+    elif valid_pass == MessageParser.MANAGER_ALREADY_CONNECTED:
+        return redirect(url_for("loading_screen"))
+    
     # Server disconnected socket so we need to reconnect
     attempt_server_connection()
 
