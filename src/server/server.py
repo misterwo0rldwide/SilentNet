@@ -59,9 +59,12 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         # Only encrypt for manager, so then only exchange keys
         # After manager is connected
         client.exchange_keys()
-        msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)[MessageParser.PROTOCOL_DATA_INDEX - 1]
+        msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
 
-        if msg.decode() == password:
+        if msg != b'':
+            msg = msg[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
+
+        if msg == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
             manager_connected = True
 
@@ -71,6 +74,8 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
 
         if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
             process_manager_request(client)
+        
+        return True
     
     # Check if client is a client
     elif msg_type == MessageParser.CLIENT_MSG_AUTH:
@@ -86,6 +91,8 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
             log_data_base.client_setup_db(client.get_address())
         
         process_client_data(client)
+    
+    return False
 
 def process_client_data(client : client) -> None:
     """
@@ -102,7 +109,7 @@ def process_client_data(client : client) -> None:
     while proj_run:
 
         try:
-            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
 
             if data == b'' or len(data) != 2:
                 break
@@ -315,14 +322,12 @@ def manage_comm(client : client) -> None:
     msg_type = data[0].decode()
     if len(clients_connected) >= max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
         # If client is not manager and max_clients reached, disconnect
-
         remove_disconnected_client(client)
         return
 
     if msg_type == MessageParser.MANAGER_MSG_PASSWORD and manager_connected:
         # If manager is already connected, disconnect new manager
-
-        client.protocol_send(MessageParser.MANAGER_ALREADY_CONNECTED)
+        client.protocol_send(MessageParser.MANAGER_ALREADY_CONNECTED, encrypt=False)
         remove_disconnected_client(client)
         return
 
@@ -333,7 +338,7 @@ def manage_comm(client : client) -> None:
     # Always clean up disconnected client
     remove_disconnected_client(client)
 
-def get_clients(server_comm : server, max_clients : int) -> None:
+def get_clients(server_comm : server) -> None:
     """
         Connect clients to server
         
@@ -423,10 +428,10 @@ def main():
 
     # Start server
     try:
-        server_comm = server(max_clients)
+        server_comm = server(safety)
         server_comm.set_timeout(1)
 
-        get_clients(server_comm, max_clients)
+        get_clients(server_comm)
     finally:
         # Clean up resources
         server_comm.close()

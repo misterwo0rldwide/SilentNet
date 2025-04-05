@@ -376,23 +376,31 @@ class client (TCPsocket):
         
         return self.__mac
     
-    def exchange_keys(self) -> None:
+    def exchange_keys(self) -> bool:
         """
             Exchange keys between client and server
             
             INPUT: None
-            OUTPUT: None
+            OUTPUT: boolean value which indicated wether managed to exchange keys successfully
         """
-        if self.__encryption is not Ellipsis:
-            # If client is a manager object
-            self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
-        else:
-            # If client is a server object
-            data = self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX:]
-            self.__encryption = EncryptionHandler(int(data[0]), int(data[1]))
 
-        self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
-        self.__encryption.generate_shared_secret(int(self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX]))
+        try:
+            if self.__encryption is not Ellipsis:
+                # If client is a manager object
+                self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
+            else:
+                # If client is a server object
+                data = self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX:]
+                self.__encryption = EncryptionHandler(int(data[0]), int(data[1]))
+
+            self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
+            self.__encryption.generate_shared_secret(int(self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX]))
+
+            return True
+        
+        except Exception:
+            # If raised exception then return that function did not manage to complete successfully
+            return False
 
     def connect(self, dst_ip : str, dst_port : int) -> bool:
         """
@@ -424,15 +432,19 @@ class client (TCPsocket):
 
             @part_split -> Number of fields to seperate from start of message
         """
-        data = self.recv()
-        if data == b'':
-            return data
-        
-        if decrypt:
-            data = self.__encryption.decrypt(data)
+        try:
+            data = self.recv()
+            if data == b'':
+                return data
+            
+            if decrypt:
+                data = self.__encryption.decrypt(data)
 
-        data = MessageParser.protocol_message_deconstruct(data, part_split)
-        return data
+            data = MessageParser.protocol_message_deconstruct(data, part_split)
+            return data
+
+        except Exception:
+            return b''
         
     def protocol_send(self, msg_type, *args, encrypt: bool = True) -> None:
         """

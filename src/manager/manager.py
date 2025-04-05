@@ -9,6 +9,7 @@ import webbrowser
 import os
 import signal
 import json
+from functools import wraps
 from flask import Flask, redirect, render_template, request, jsonify, url_for
 
 # Append parent directory to be able to import protocol
@@ -38,6 +39,7 @@ previous_screen = None
 
 # Decorator to handle screen access and redirections
 def check_screen_access(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
         global current_screen, previous_screen
 
@@ -57,6 +59,7 @@ def check_screen_access(f):
         elif screens_dictionary[current_screen] > screens_dictionary[request.path]:
             return redirect(current_screen)
 
+        previous_screen = current_screen
         current_screen = request.path
         return f(*args, **kwargs)
     return wrapper
@@ -75,13 +78,14 @@ def page_not_found(error):
 def internal_error(error):
     return render_template("internal_error.html")
 
-@check_screen_access
 @web_app.route("/exit")
+@check_screen_access
 def exit_page():
+    print(previous_screen)
     return render_template("exit_screen.html", previous_screen=previous_screen)
 
-@check_screen_access
 @web_app.route("/loading")
+@check_screen_access
 def loading_screen():
     # Ensure closing the socket if redirected to loading while socket is still up
     if manager_server_sock:
@@ -89,8 +93,8 @@ def loading_screen():
 
     return render_template("loading_screen.html")
 
-@check_screen_access
 @web_app.route("/")
+@check_screen_access
 def start_screen():
     password_incorrect = request.args.get('password_incorrect', 'false')
 
@@ -109,15 +113,14 @@ def check_password():
 
     manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD,  encrypt=False)
 
-    manager_server_sock.exchange_keys()
+    if not manager_server_sock.exchange_keys():
+        return redirect(url_for("loading_screen"))
+
     manager_server_sock.protocol_send(password)
 
     valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
-    
-    elif valid_pass == MessageParser.MANAGER_ALREADY_CONNECTED:
-        return redirect(url_for("loading_screen"))
     
     # Server disconnected socket so we need to reconnect
     attempt_server_connection()
@@ -127,8 +130,8 @@ def check_password():
     
     return redirect(url_for("start_screen", password_incorrect='true'))
 
-@check_screen_access
 @web_app.route("/settings")
+@check_screen_access
 def settings_screen():
     return render_template("settings_screen.html")
 
@@ -140,8 +143,8 @@ def submit_settings():
     manager_server_sock.protocol_send(MessageParser.MANAGER_SND_SETTINGS, employees_amount, safety)
     return redirect(url_for("employees_screen"))
 
-@check_screen_access
 @web_app.route("/employees")
+@check_screen_access
 def employees_screen():
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
     connected_clients = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]
@@ -172,8 +175,8 @@ def update_client_name():
     else:
         return jsonify({"success": False, "message": "Name is already used"})
 
-@check_screen_access
 @web_app.route("/stats_screen")
+@check_screen_access
 def stats_screen():
     client_name = request.args.get('client_name')
     manager_server_sock.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)

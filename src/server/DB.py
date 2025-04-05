@@ -393,7 +393,7 @@ class UserLogsORM (DBHandler):
         
         core_usage = {}
         for log in cpu_logs:
-            core, usage = log
+            core, usage = log[:2]
 
             if core not in core_usage:
                 core_usage[core] = []
