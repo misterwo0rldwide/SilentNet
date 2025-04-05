@@ -115,3 +115,32 @@ body::before {
     gap: 15px;
     margin-top: 20px;
 }
+
+.connection-status {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin: 20px 0;
+    text-align: center;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+    padding: 8px 12px;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.status-icon {
+    font-size: 1rem;
+}
+
+/* For modern browsers that support color-mix */
+@supports (color: color-mix(in srgb, white, black)) {
+    .connection-status {
+        color: color-mix(in srgb, currentColor 70%, #adb5bd);
+    }
+}

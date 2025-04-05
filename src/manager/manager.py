@@ -187,7 +187,6 @@ def attempt_server_connection() -> bool:
     
     if manager_connected:
         manager_server_sock.set_timeout(0.1)
-    
 
 def main():
     direct = ""

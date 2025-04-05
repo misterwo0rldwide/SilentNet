@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading Screen</title>
+    <title>Silent Net - Connection</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/loading_screen.css') }}">
 </head>
 <body>
@@ -12,11 +12,15 @@
     </div>
 
     <div id="loading-window">
-        <h2>Connecting to Silent Net...</h2>
+        <h2>Establishing Secure Connection...</h2>
         <div class="spinner"></div>
+        <div class="connection-status">
+            <span class="status-icon">ℹ️</span>
+            Server connection policy: Only one active manager session permitted
+        </div>
         <div class="button-group">
-            <button class="connect-btn" onclick="manualConnect()">Try to Connect</button>
-            <button class="exit-btn" onclick="exitProgram()">Exit</button>
+            <button class="connect-btn" onclick="manualConnect()">Reconnect</button>
+            <button class="exit-btn" onclick="exitProgram()">Exit Silent Net</button>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/loading_screen.js') }}"></script>

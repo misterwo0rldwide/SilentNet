@@ -33,6 +33,7 @@ clients_recv_lock = threading.Lock()
 max_clients = 5 # Max amount of clients connected simultaneously to server
 safety = 5 # Safety parameter (Certain amount of times server allow a client to send data which can not be decoded)
 password = "itzik" # Password for managers when trying to connect in order for a manager to be valid
+manager_connected = False # Flag for if manager is connected or not
 
 # Data base object
 log_data_base = ...
@@ -49,7 +50,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         @msg_type -> Message type
         @msg -> Message parameters
     """
-    
+    global manager_connected
 
     # Check if client is a manager
     if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
@@ -57,6 +58,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
 
         if msg.decode() == password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
+            manager_connected = True
 
         # Prevent timing attack
         sleep(uniform(0, 0.05))
@@ -297,7 +299,7 @@ def manage_comm(client : client) -> None:
         
         @client -> Protocol client object
     """
-    global clients_connected
+    global clients_connected, manager_connected
 
     data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
     # Check if valid msg
@@ -308,8 +310,9 @@ def manage_comm(client : client) -> None:
     msg_type = data[0].decode()
 
     # Check if manager or client
-    determine_client_type(client, msg_type, data[1])
-    
+    if determine_client_type(client, msg_type, data[1]):
+        manager_connected = False # Function finishes when communication ends so if manager is not connected, set to false
+
     # Always clean up disconnected client
     remove_disconnected_client(client)
 
@@ -329,7 +332,7 @@ def get_clients(server_comm : server, max_clients : int) -> None:
     while proj_run:
         try:
             # Check if we can accept more clients
-            if len(clients_connected) < max_clients:
+            if len(clients_connected) < max_clients and manager_connected:
                 # Accept new client
                 client = server_comm.recv_client(safety)
                 clients_thread = threading.Thread(target=manage_comm, args=(client,))

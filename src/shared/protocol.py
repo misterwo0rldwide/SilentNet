@@ -351,7 +351,7 @@ class client (TCPsocket):
 
         # If its a manager object then only build base for encryption
         if manager:
-            self.__encryption = EncryptionHandler(randint(2, 10), randint(10, 25))
+            self.__encryption = EncryptionHandler(randint(2, 80), randint(10, 80))
         else:
             # Otherwise already exchange keys
             self.exchange_keys()
@@ -473,6 +473,16 @@ class client (TCPsocket):
         """
         
         self.__unsafe_msg_cnt = 0
+    
+    def is_manager(self) -> bool:
+        """
+            Returns if client is a manager
+            
+            INPUT: None
+            OUTPUT: Boolean value
+        """
+        
+        return self.__manager
 
 
 class server (TCPsocket):
