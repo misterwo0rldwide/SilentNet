@@ -255,17 +255,7 @@ class UserLogsORM (DBHandler):
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
         cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0]
 
-        cur_time = datetime.now()
-        cur_time = cur_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        cpu_core, cpu_usage = [s.decode() for s in MessageParser.protocol_message_deconstruct(data)]
-
-        # Since the client sends all the cores at the same time we dont need to keep track of the time
-        # Of cores that are after the first core
-        if int(cpu_core) > 0:
-            cpu_logs += f"{cpu_core},{cpu_usage}~"
-        else:
-            cpu_logs += f"{cpu_core},{cpu_usage},{cur_time}~"
+        cpu_logs += data + "|"
 
         command = f"UPDATE {self.table_name} SET data = ? WHERE mac = ? AND type = ?;"
         self.commit(command, cpu_logs, mac, MessageParser.CLIENT_CPU_USAGE)
@@ -386,18 +376,22 @@ class UserLogsORM (DBHandler):
         """
 
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
-        cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split("~")
+        cores_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split("|")
 
-        cpu_logs = [i.split(",") for i in cpu_logs][:-1] # Ignore last index since it is empty
-        cpu_usage_logs = [i[2] for i in cpu_logs if len(i) > 2]
+        logs = [i.split("~") for i in cores_logs if len(i) > 1]
+        cpu_usage_logs = []
         
         core_usage = {}
-        for log in cpu_logs:
+        for log in logs:
+            log = log.split("~")
             core, usage = log[:2]
 
             if core not in core_usage:
                 core_usage[core] = []
             core_usage[core].append(int(usage))
+            
+            if len(log) == 3:
+                cpu_usage_logs.append(log[2])
         
         return core_usage, cpu_usage_logs
 
