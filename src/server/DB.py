@@ -379,7 +379,10 @@ class UserLogsORM (DBHandler):
         """
 
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
-        cores_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split(b"|")
+        cores_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0]
+        if isinstance(cores_logs, str):
+            cores_logs = cores_logs.encode()
+        cores_logs = cores_logs.split(b"|")
 
         logs = [log for i in cores_logs if len(i) > 1 for log in i.split(MessageParser.PROTOCOL_SEPARATOR)]
         cpu_usage_logs = []

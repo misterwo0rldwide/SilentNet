@@ -126,7 +126,7 @@ def process_employee_data(client : client) -> None:
                     break
         
         except Exception as e:
-            print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
+            print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
             disconnect = client.unsafe_msg_cnt_inc()
 
             if disconnect:
@@ -260,7 +260,7 @@ def process_manager_request(client : client) -> None:
                 break
         
         except Exception as e:
-            print(f"---\nError {e}\nfrom client: {client.get_address()}\n---")
+            print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
             disconnect = client.unsafe_msg_cnt_inc()
 
             if disconnect:
@@ -378,7 +378,7 @@ def get_clients(server_comm : server) -> None:
             pass
 
         except Exception as e:
-            print(f"Error accepting client: {e}")
+            print(f"Error -> accepting client: {e}")
     
     print('Server shutting down')
 
