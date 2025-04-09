@@ -10,7 +10,6 @@
 #include "kClientHook.h"
 #include "cpu_stats.h"
 #include "headers.h"
-#include "mac_find.h"
 #include "protocol.h"
 #include "tcp_socket.h"
 #include "transmission.h"
@@ -56,6 +55,9 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   int cpu_core, cpu_usage;
   struct timespec64 tv; // Measure current time
   static long long int last_tv = 0;
+  char cpu_load_msg[BUFFER_SIZE + REAL_TIME_LENGTH] = {0}; // total cpu load
+  char temp_buffer[BUFFER_SIZE / 16] = {0}; // Temporary buffer for formatting
+  char time_buf[REAL_TIME_LENGTH] = {0};    // Buffer for the time string
 
   // Current cpu times
   unsigned long idle_time = 0, idle_delta = 0;
@@ -77,6 +79,9 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   // Send only after CPU_USAGE_DELAY has passed
   if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
     return 0;
+
+  // Initialize the message with the message type
+  snprintf(cpu_load_msg, sizeof(cpu_load_msg), "%s", MSG_CPU_USAGE);
 
   for (cpu_core = 0; cpu_core < NR_CPUS; cpu_core++) {
     idle_time = get_cpu_idle(cpu_core);
@@ -100,8 +105,25 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
       continue;
 
     cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
-    protocol_send_message("%s" PROTOCOL_SEPARATOR "%d" PROTOCOL_SEPARATOR "%d",
-                          MSG_CPU_USAGE, cpu_core, cpu_usage);
+
+    snprintf(temp_buffer, sizeof(temp_buffer), PROTOCOL_SEPARATOR "%d,%d",
+             cpu_core, cpu_usage);
+
+    // Check if we have enough space in the buffer
+    if (strlen(cpu_load_msg) + strlen(temp_buffer) < sizeof(cpu_load_msg)) {
+      strcat(cpu_load_msg, temp_buffer);
+    }
+  }
+
+  get_real_time(time_buf); // Get the real time
+
+  // Add real time of cpu usage
+  strcat(cpu_load_msg, ",");
+  strcat(cpu_load_msg, time_buf);
+
+  // Send the aggregated message (only if we have data to send)
+  if (strlen(cpu_load_msg) > strlen(MSG_CPU_USAGE) && !first_run) {
+    protocol_send_message("%s", cpu_load_msg);
   }
 
   first_run = false; // Set the flag to false after the first run
@@ -180,17 +202,6 @@ static int handler_pre_inet_sendmsg(struct kprobe *kp, struct pt_regs *regs) {
                                category);
 }
 
-/* Sends mac and hostname to server */
-static int handle_credentials(void) {
-  char mac_buf[MAC_SIZE];
-  get_mac_address(mac_buf);
-
-  // Send mac address and hostname
-  return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR
-                               "%s",
-                               MSG_AUTH, mac_buf, utsname()->nodename);
-}
-
 /* Register all hooks */
 static int register_probes(void) {
   int ret = 0, i;
@@ -234,7 +245,6 @@ static int __init hook_init(void) {
     return ret;
 
   data_transmission_init();
-  handle_credentials(); // Send credentials before registering hooks
 
   /* Registers kprobes, if one fails unregisters all registered kprobes */
   ret = register_probes();

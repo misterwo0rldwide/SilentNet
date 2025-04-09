@@ -26,3 +26,15 @@ unsigned long get_cpu_active(int core) {
 
   return total_active;
 }
+
+void get_real_time(char *time_buf) {
+  struct timespec64 ts;
+  struct tm tm;
+
+  ktime_get_real_ts64(&ts);        // Get current real time
+  time64_to_tm(ts.tv_sec, 0, &tm); // Convert to calendar time (UTC)
+
+  snprintf(time_buf, REAL_TIME_LENGTH, "%04ld-%02d-%02d %02d:%02d:%02d",
+           tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+           tm.tm_hour + TIME_ZONE_DIFF, tm.tm_min, tm.tm_sec);
+}
