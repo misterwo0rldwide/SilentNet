@@ -47,6 +47,7 @@ class MessageParser:
     MANAGER_SND_SETTINGS = "MST"
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
+    MANAGER_DELETE_CLIENT = "MDC"
 
     # Manager changes name of client
     MANAGER_CHG_CLIENT_NAME = "MCN"

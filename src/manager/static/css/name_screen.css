@@ -126,3 +126,41 @@ body::before {
     z-index: 1000;
     display: none;
 }
+
+/* Add these to your existing name_screen.css */
+
+.name-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 90px;
+}
+
+.name-form {
+    margin: 0;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    padding: 5px;
+    margin-left: 5px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.delete-btn:hover {
+    background-color: rgba(255, 107, 107, 0.2);
+    transform: scale(1.1);
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}

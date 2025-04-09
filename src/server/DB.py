@@ -77,8 +77,18 @@ class DBHandler():
                 conn.close()
         except Exception as e:
             pass
+
+    def clean_deleted_records_DB(self):
+        """
+            Cleans all deleted records from the table
+
+            INPUT: None
+            OUTPUT: None
+        """
+        command = "VACUUM"
+        self.commit(command)
     
-    def delete_records_DB(self):
+    def delete_all_records_DB(self):
         """
             Deletes all records from the table
 
@@ -88,8 +98,7 @@ class DBHandler():
         command = f"DELETE FROM {self.table_name}"
         self.commit(command)
 
-        command = "VACUUM"
-        self.commit(command)
+        self.clean_deleted_records_DB()
     
     def commit(self, command: str, *command_args):
         """
@@ -168,7 +177,20 @@ class UserLogsORM (DBHandler):
         command = f"INSERT INTO {self.table_name} (mac, type, data) VALUES (?,?,'');"
         self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)
 
-    
+    def delete_mac_records_DB(self, mac : str):
+        """
+            Deletes all records from the table of a certain MAC address
+
+            INPUT: mac
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+        """
+        command = f"DELETE FROM {self.table_name} WHERE mac = ?"
+        self.commit(command, mac)
+
+        self.clean_deleted_records_DB()
+
     def __check_inactive(self, mac : str) -> tuple[str, int]:
         """
             Checks if client is currently inactive
@@ -455,6 +477,21 @@ class UserId (DBHandler):
                 cls._instance.__init__(conn, cursor, table_name)
             return cls._instance
     
+    def delete_mac(self, mac : str) -> None:
+        """
+            Deletes a certain MAC address from the table
+
+            INPUT: mac
+            OUTPUT: None
+
+            @mac: MAC address of user's computer
+        """
+
+        command = f"DELETE FROM {self.table_name} WHERE mac = ?;"
+        self.commit(command, mac)
+
+        self.clean_deleted_records_DB()
+
     def insert_data(self, mac: str, hostname : str) -> bool:
         """
             Insert data to SQL table, checks if mac already in use or hostname

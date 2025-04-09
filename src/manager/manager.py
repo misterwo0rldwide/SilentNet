@@ -155,6 +155,18 @@ def employees_screen():
 
     return render_template("name_screen.html", name_list=stats)
 
+@web_app.route('/delete_client', methods=['POST'])
+def delete_client():
+    data = request.get_json()
+    client_name = data.get('name')
+    
+    if not client_name:
+        return jsonify({'success': False, 'message': 'No name provided'}), 400
+    
+    manager_server_sock.protocol_send(MessageParser.MANAGER_DELETE_CLIENT, client_name)
+    return jsonify({'success': True, 'message': f'Client {client_name} deleted successfully'})
+    
+
 @web_app.route("/manual-connect")
 def manual_connect():
     attempt_server_connection()

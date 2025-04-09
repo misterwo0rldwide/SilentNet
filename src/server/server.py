@@ -241,6 +241,14 @@ def process_manager_request(client : client) -> None:
                 else:
                     ret_msg_type = MessageParser.MANAGER_INVALID_CHG
             
+            elif msg_type == MessageParser.MANAGER_DELETE_CLIENT:
+                # Delete client from DB
+                client_name = msg_params.decode()
+                mac = uid_data_base.get_mac_by_hostname(client_name)
+
+                uid_data_base.delete_mac(mac)
+                log_data_base.delete_mac_records_DB(mac)
+
             elif msg_type == MessageParser.MANAGER_MSG_EXIT:
                 # Manager requested to exit
                 manager_disconnect = True
@@ -383,7 +391,7 @@ def get_clients(server_comm : server) -> None:
     print('Server shutting down')
 
 def erase_all_logs() -> None:
-    log_data_base.delete_records_DB()
+    log_data_base.delete_all_records_DB()
     clients = uid_data_base.get_clients()
 
     for mac, _ in clients:
