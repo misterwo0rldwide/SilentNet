@@ -110,13 +110,11 @@ def process_employee_data(client : client) -> None:
 
         try:
             data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
-
             if data == b'' or len(data) != 2:
                 break
 
             log_type, log_params = data[0], data[1]
             log_type = log_type.decode()
-
 
             # Logging data
             if log_type in MessageParser.CLIENT_ALL_MSG:
@@ -132,7 +130,8 @@ def process_employee_data(client : client) -> None:
             disconnect = client.unsafe_msg_cnt_inc()
 
             if disconnect:
-                break
+                print("Disconnecting employee due to unsafe message count")
+                return
     
     print(f"Employee disconnected: {client.get_ip()}")
 
@@ -265,7 +264,8 @@ def process_manager_request(client : client) -> None:
             disconnect = client.unsafe_msg_cnt_inc()
 
             if disconnect:
-                break
+                print("Disconnecting manager due to unsafe message count")
+                return
     
     print(f"Manager disconnected: {client.get_ip()}")
 

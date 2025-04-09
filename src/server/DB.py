@@ -254,8 +254,11 @@ class UserLogsORM (DBHandler):
 
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
         cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0]
+        
+        if isinstance(cpu_logs, str):
+            cpu_logs = cpu_logs.encode()
 
-        cpu_logs += data + "|"
+        cpu_logs += data + b"|"
 
         command = f"UPDATE {self.table_name} SET data = ? WHERE mac = ? AND type = ?;"
         self.commit(command, cpu_logs, mac, MessageParser.CLIENT_CPU_USAGE)
@@ -376,14 +379,14 @@ class UserLogsORM (DBHandler):
         """
 
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
-        cores_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split("|")
+        cores_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0].split(b"|")
 
-        logs = [i.split("~") for i in cores_logs if len(i) > 1]
+        logs = [log for i in cores_logs if len(i) > 1 for log in i.split(MessageParser.PROTOCOL_SEPARATOR)]
         cpu_usage_logs = []
         
         core_usage = {}
         for log in logs:
-            log = log.split("~")
+            log = log.decode().split(",")
             core, usage = log[:2]
 
             if core not in core_usage:
