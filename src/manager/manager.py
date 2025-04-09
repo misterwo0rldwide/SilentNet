@@ -81,7 +81,6 @@ def internal_error(error):
 @web_app.route("/exit")
 @check_screen_access
 def exit_page():
-    print(previous_screen)
     return render_template("exit_screen.html", previous_screen=previous_screen)
 
 @web_app.route("/loading")

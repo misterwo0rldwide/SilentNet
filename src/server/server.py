@@ -90,13 +90,13 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         if not logged:
             log_data_base.client_setup_db(client.get_address())
         
-        process_client_data(client)
+        process_employee_data(client)
     
     return False
 
-def process_client_data(client : client) -> None:
+def process_employee_data(client : client) -> None:
     """
-        Processes client's sent data
+        Processes employee's sent data
         
         INPUT: client, log_type, log_params
         OUTPUT: None
@@ -133,8 +133,10 @@ def process_client_data(client : client) -> None:
 
             if disconnect:
                 break
+    
+    print(f"Employee disconnected: {client.get_ip()}")
 
-def get_client_stats(client_name : str) -> str:
+def get_employee_stats(client_name : str) -> str:
     """
         Gets all avaliable stats on a client
         
@@ -223,7 +225,7 @@ def process_manager_request(client : client) -> None:
             
             elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
                 # Get detailed stats for a specific client
-                ret_msg = [get_client_stats(msg_params.decode())]  # Due to asterisk when sending 
+                ret_msg = [get_employee_stats(msg_params.decode())]  # Due to asterisk when sending 
                 ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
             
             elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
@@ -264,6 +266,8 @@ def process_manager_request(client : client) -> None:
 
             if disconnect:
                 break
+    
+    print(f"Manager disconnected: {client.get_ip()}")
 
 def remove_disconnected_client(client : client) -> None:
     """
@@ -292,8 +296,6 @@ def remove_disconnected_client(client : client) -> None:
             if client_object == client:
                 del clients_connected[index]
                 break
-
-    print(f"Client disconnected: {client.get_ip()}")
 
     client.close()
     client = None
