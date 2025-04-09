@@ -26,7 +26,6 @@ static int handler_pre_do_fork(struct kprobe *, struct pt_regs *);
 static int handler_pre_input_event(struct kprobe *, struct pt_regs *);
 static int handler_pre_calc_global_load(struct kprobe *, struct pt_regs *);
 static int handler_pre_inet_sendmsg(struct kprobe *, struct pt_regs *);
-static int handle_credentials(void);
 static int register_probes(void);
 static void unregister_probes(int);
 
