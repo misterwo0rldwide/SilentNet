@@ -206,6 +206,7 @@ void backup_data_log(const char *data, size_t len) {
 int read_backup_data_log(char *buf) {
   size_t len;
   ssize_t ret;
+  char len_str[SIZE_OF_SIZE + 1] = {0}; // Temporary buffer for length
 
   if (!file || !buf) {
     printk(KERN_ERR "Invalid parameters for read_backup_data\n");
@@ -213,32 +214,34 @@ int read_backup_data_log(char *buf) {
   }
 
   if (read_pos == write_pos) {
-    printk(KERN_ERR "No data to read\n");
     return 0; // No data to read
   }
 
-  // Read data from the file
-  ret = read_circular(buf, SIZE_OF_SIZE);
+  ret = read_circular(len_str, SIZE_OF_SIZE);
+  if (ret != SIZE_OF_SIZE) {
+    printk(KERN_ERR "Failed to read message length (ret=%zd)\n", ret);
+    return ret < 0 ? ret : -EIO;
+  }
+
+  ret = kstrtoul(len_str, 10, &len);
   if (ret < 0) {
-    printk(KERN_ERR "Failed to read data from file\n");
+    printk(KERN_ERR "Invalid message length format: %.*s\n", SIZE_OF_SIZE,
+           len_str);
     return ret;
   }
 
-  // Convert string to integer
-  ret = kstrtoul(buf, 10, &len);
-  if (ret < 0) {
-    printk(KERN_ERR "Failed to convert string to integer\n");
-    return ret;
+  if (len == 0 || len > BUFFER_SIZE - SIZE_OF_SIZE) {
+    printk(KERN_ERR "Invalid message length: %zu\n", len);
+    return -EINVAL;
   }
 
-  buf += SIZE_OF_SIZE;
-
-  ret = read_circular(buf, len);
-  if (ret < 0) {
-    printk(KERN_ERR "Failed to read data from file\n");
-    return ret;
+  memcpy(buf, len_str, SIZE_OF_SIZE);
+  ret = read_circular(buf + SIZE_OF_SIZE, len);
+  if (ret != len) {
+    printk(KERN_ERR "Failed to read message (expected=%lu, got=%lu)\n", len,
+           ret);
+    return ret < 0 ? ret : -EIO;
   }
 
-  ret = len + SIZE_OF_SIZE;
-  return ret;
+  return len + SIZE_OF_SIZE; // Total bytes read
 }

