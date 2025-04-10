@@ -13,9 +13,25 @@ static struct mutex trns_mutex; // Mutex for thread safe socket handling
 
 static char cred[BUFFER_SIZE];
 
+static void disconnect(char *msg, size_t len) {
+  if (sock) {
+    tcp_sock_close(sock);
+    sock = NULL;
+  }
+  connected = false;
+
+  if (!msg || len <= 0)
+    return;
+  backup_data_log(msg, len);
+}
+
 void transmit_data(struct work_struct *work) {
   wq_msg *curr_msg = container_of(work, wq_msg, work);
   int ret;
+
+  // Mainly for backup data when server is up
+  char msg_buf[BUFFER_SIZE];
+  size_t msg_len;
 
   mutex_lock(&trns_mutex);
 
@@ -24,14 +40,13 @@ void transmit_data(struct work_struct *work) {
     /* When a socket disconnects a new socket needs to be created */
     sock = tcp_sock_create();
     if (IS_ERR(sock)) {
-      sock = NULL;
+      disconnect(NULL, 0);
       goto end;
     }
 
     ret = tcp_sock_connect(sock, DEST_IP, DEST_PORT);
     if (ret < 0) {
-      tcp_sock_close(sock);
-      sock = NULL;
+      disconnect(NULL, 0);
       goto end;
     }
     connected = true;
@@ -39,18 +54,24 @@ void transmit_data(struct work_struct *work) {
     // Send credentials - only after successful connection
     ret = tcp_send_msg(sock, cred, strlen(cred));
     if (ret < 0) {
-      connected = false;
-      tcp_sock_close(sock);
-      sock = NULL;
+      disconnect(NULL, 0);
       goto end;
     }
   }
 
   ret = tcp_send_msg(sock, curr_msg->msg_buf, curr_msg->length);
   if (ret < 0) {
-    connected = false;
-    tcp_sock_close(sock);
-    sock = NULL;
+    disconnect(curr_msg->msg_buf, curr_msg->length);
+  } else {
+    // If sending message was successful then employee is connected to server
+    // So now we will try to flush the backup data to the server
+    while ((msg_len = read_backup_data_log(msg_buf)) > 0) {
+      ret = tcp_send_msg(sock, msg_buf, msg_len);
+      if (ret < 0) {
+        disconnect(msg_buf, msg_len);
+        break;
+      }
+    }
   }
 
 end:
