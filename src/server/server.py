@@ -112,6 +112,10 @@ def process_employee_data(client : client) -> None:
             data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
             if data == b'' or len(data) != 2:
                 break
+            
+            # Timeout exception
+            if data == b'ERR':
+                continue
 
             log_type, log_params = data[0], data[1]
             log_type = log_type.decode()
@@ -120,14 +124,14 @@ def process_employee_data(client : client) -> None:
             if log_type in MessageParser.CLIENT_ALL_MSG:
                 log_data_base.insert_data(client.get_address(), log_type, log_params)
             else:
-                disconnect = client.unsafe_msg_cnt_inc()
+                disconnect = client.unsafe_msg_cnt_inc(safety)
 
                 if disconnect:
                     break
         
         except Exception as e:
             print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
-            disconnect = client.unsafe_msg_cnt_inc()
+            disconnect = client.unsafe_msg_cnt_inc(safety)
 
             if disconnect:
                 print("Disconnecting employee due to unsafe message count")
@@ -203,6 +207,10 @@ def process_manager_request(client : client) -> None:
             if data == b'':
                 break
 
+            # Timeout exception
+            if data == b'ERR':
+                continue
+
             msg_type = data[0].decode()
             msg_params = data[1] if len(data) > 1 else ""
 
@@ -254,7 +262,7 @@ def process_manager_request(client : client) -> None:
                 manager_disconnect = True
 
             else:
-                disconnect = client.unsafe_msg_cnt_inc()
+                disconnect = client.unsafe_msg_cnt_inc(safety)
 
                 if disconnect:
                     manager_disconnect = True
@@ -269,7 +277,7 @@ def process_manager_request(client : client) -> None:
         
         except Exception as e:
             print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
-            disconnect = client.unsafe_msg_cnt_inc()
+            disconnect = client.unsafe_msg_cnt_inc(safety)
 
             if disconnect:
                 print("Disconnecting manager due to unsafe message count")
@@ -323,11 +331,15 @@ def manage_comm(client : client) -> None:
     """
     global clients_connected, manager_connected
 
-    data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
-    # Check if valid msg
-    if data == b'':
-        remove_disconnected_client(client)
-        return
+    for _ in range(3):
+        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
+        # Check if valid msg
+        if data == b'' or (data is list and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
+            remove_disconnected_client(client)
+            return
+        
+        if data != b'ERR':
+            break
     
     msg_type = data[0].decode()
     if len(clients_connected) >= max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
@@ -366,7 +378,7 @@ def get_clients(server_comm : server) -> None:
             # Check if we can accept more clients
             if len(clients_connected) < max_clients or not manager_connected:
                 # Accept new client
-                client = server_comm.recv_client(safety)
+                client = server_comm.recv_client()
                 clients_thread = threading.Thread(target=manage_comm, args=(client,))
                 
                 # Add client to connected list with proper locking
@@ -407,8 +419,18 @@ def server_settings() -> None:
     # Proper command-line argument handling (commented out in original)
     if len(sys.argv) == 4:
         if sys.argv[1].isnumeric() and sys.argv[2].isnumeric():
-            max_clients = int(sys.argv[1])
-            safety = int(sys.argv[2])
+            if int(sys.argv[1]) > 40 or int(sys.argv[1]) < 1:
+                print("Warning: Max clients must be between 1 and 40")
+                print("Using default value instead")
+            else:
+                max_clients = int(sys.argv[1])
+
+            if int(sys.argv[2]) > 5 or int(sys.argv[2]) < 1:
+                print("Warning: Safety parameter must be between 1 and 5")
+                print("Using default value instead")
+
+            else:
+                safety = int(sys.argv[2])
             password = sys.argv[3]
         else:
             print("Warning: Client max and safety params must be numerical")

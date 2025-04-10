@@ -48,6 +48,7 @@ class MessageParser:
     MANAGER_GET_CLIENTS = "MGC"
     MANAGER_GET_CLIENT_DATA = "MGD"
     MANAGER_DELETE_CLIENT = "MDC"
+    MANAGER_CHECK_CONNECTION = "MCC"
 
     # Manager changes name of client
     MANAGER_CHG_CLIENT_NAME = "MCN"
@@ -327,7 +328,7 @@ class TCPsocket:
 
 class client (TCPsocket):
     
-    def __init__(self, sock: Optional[socket.socket] = None, safety: int = 10, manager: bool = False):
+    def __init__(self, sock: Optional[socket.socket] = None, manager: bool = False):
         """
             Create the client side socket
             socket type: TCP
@@ -346,7 +347,6 @@ class client (TCPsocket):
 
         # Unsafe message counter
         self.__unsafe_msg_cnt = 0
-        self.__unsafe_max = safety
 
         # Encryption handler
         self.__encryption = ...
@@ -443,6 +443,9 @@ class client (TCPsocket):
 
             data = MessageParser.protocol_message_deconstruct(data, part_split)
             return data
+        
+        except socket.timeout:
+            return b'ERR'
 
         except Exception:
             return b''
@@ -464,7 +467,7 @@ class client (TCPsocket):
         
         self.send(constr_msg)
 
-    def unsafe_msg_cnt_inc(self) -> bool:
+    def unsafe_msg_cnt_inc(self, safety : int) -> bool:
         """
             Increase unsafe message counter
             
@@ -472,7 +475,7 @@ class client (TCPsocket):
             OUTPUT: boolean value
         """
         self.__unsafe_msg_cnt += 1
-        return self.__unsafe_msg_cnt > self.__unsafe_max
+        return self.__unsafe_msg_cnt > 10 - safety
 
     def reset_unsafe_msg_cnt(self) -> None:
         """
@@ -483,16 +486,6 @@ class client (TCPsocket):
         """
         
         self.__unsafe_msg_cnt = 0
-    
-    def is_manager(self) -> bool:
-        """
-            Returns if client is a manager
-            
-            INPUT: None
-            OUTPUT: Boolean value
-        """
-        
-        return self.__manager
 
 
 class server (TCPsocket):
@@ -514,7 +507,7 @@ class server (TCPsocket):
         # Bind socket and set max listen
         self.create_server_socket(self.SERVER_BIND_IP, self.SERVER_BIND_PORT, server_listen)
     
-    def recv_client(self, safety) -> client:
+    def recv_client(self) -> client:
         """
             Receives a client from server socket
             
@@ -522,5 +515,6 @@ class server (TCPsocket):
             OUTPUT: Client object
         """
         
-        c = client(self.server_socket_recv_client(), safety)
+        c = client(self.server_socket_recv_client())
+        c.set_timeout(5)
         return c

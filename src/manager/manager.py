@@ -34,7 +34,7 @@ screens_dictionary = {
     "/stats_screen": 5,
 }
 
-current_screen = "/loading"
+current_screen = "/"
 previous_screen = None
 
 # Decorator to handle screen access and redirections
@@ -64,9 +64,16 @@ def check_screen_access(f):
         return f(*args, **kwargs)
     return wrapper
 
+def disconnect_manager():
+    global manager_connected
+    if manager_server_sock:
+        manager_server_sock.close()
+    
+    manager_connected = False
+
 @web_app.route("/exit-program")
 def exit_proj():
-    manager_server_sock.close()  # Close the server socket
+    disconnect_manager()
     os.kill(os.getpid(), signal.SIGINT)  # Terminate the process
     return '', 204  # No content as response
 
@@ -87,36 +94,31 @@ def exit_page():
 @check_screen_access
 def loading_screen():
     # Ensure closing the socket if redirected to loading while socket is still up
-    if manager_server_sock:
-        manager_server_sock.close()
-
+    disconnect_manager()
     return render_template("loading_screen.html")
 
 @web_app.route("/")
 @check_screen_access
 def start_screen():
     password_incorrect = request.args.get('password_incorrect', 'false')
-
-    # If password_incorrect is true, it means the user has already been here, so check for connection
-    if password_incorrect and not manager_connected:
-        return redirect(url_for("loading_screen"))
-
     return render_template("opening_screen.html", password_incorrect=password_incorrect)
 
 @web_app.route('/check_password', methods=['POST'])
 def check_password():
     password = request.form.get('password')
 
+    if not manager_connected:
+        attempt_server_connection()
+        if not manager_connected:
+            return redirect(url_for("loading_screen"))
+    
     # Split password sending into two parts, first one is to notice server of manager trying to connect
     # And then key exchange and password sending
-
     manager_server_sock.protocol_send(MessageParser.MANAGER_MSG_PASSWORD,  encrypt=False)
-
     if not manager_server_sock.exchange_keys():
         return redirect(url_for("loading_screen"))
 
     manager_server_sock.protocol_send(password)
-
     valid_pass = manager_server_sock.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
     if valid_pass == MessageParser.MANAGER_VALID_CONN:
         return redirect(url_for("settings_screen"))
@@ -170,7 +172,13 @@ def delete_client():
 @web_app.route("/manual-connect")
 def manual_connect():
     attempt_server_connection()
-    return jsonify({"status": manager_connected})
+    curr_state = manager_connected
+
+    if manager_connected:
+        manager_server_sock.protocol_send(MessageParser.MANAGER_CHECK_CONNECTION, encrypt=False)
+        disconnect_manager()
+
+    return jsonify({"status": curr_state})
 
 @web_app.route('/update_client_name', methods=['POST'])
 def update_client_name():
@@ -208,19 +216,14 @@ def attempt_server_connection() -> bool:
 
     manager_server_sock = client(manager = True)
     manager_connected = manager_server_sock.connect("127.0.0.1", server.SERVER_BIND_PORT)
+    if not manager_connected:
+        return render_template("loading_screen.html")
     
-    if manager_connected:
-        manager_server_sock.set_timeout(0.1)
+    manager_server_sock.set_timeout(0.1)
 
 def main():
-    direct = ""
-    attempt_server_connection()
-
-    if not manager_connected:
-        direct = "/loading"
-    
     port = TCPsocket.get_free_port()
-    webbrowser.open(f"http://127.0.0.1:{port}" + direct)
+    webbrowser.open(f"http://127.0.0.1:{port}/")
 
     web_app.run(port=port)
 
