@@ -9,11 +9,16 @@
 
 #include "headers.h"
 #include "protocol.h"
+#include <linux/dcache.h>
+#include <linux/err.h>
 #include <linux/fs.h>
+#include <linux/mount.h>
+#include <linux/namei.h>
 
-#define MAX_FILE_SIZE (16 * 1024) // 16KB
-#define TRUNCATE_PRECENTAGE (0.2) // 20%
-#define TRUNCATE_SIZE (int)(MAX_FILE_SIZE * TRUNCATE_PRECENTAGE)
+#define MAX_FILE_SIZE (16 * 1024)  // 16KB
+#define TRUNCATE_PERCENTAGE (0.2f) // 20%
+#define TRUNCATE_SIZE ((size_t)(MAX_FILE_SIZE * TRUNCATE_PERCENTAGE))
+#define FILE_PERMISSIONS (S_IRUSR | S_IWUSR) // 0600 - Only owner can read/write
 
 #define MSG_START                                                              \
   '0' // Since every message has four zero padding

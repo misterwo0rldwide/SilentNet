@@ -1,6 +1,8 @@
 /*
  *	'silent_net' File storage handling.
  *      - Used for backup when server is down
+ *      - Implements circular buffer
+ *      - Meant for single threaded access
  *
  *	Omer Kfir (C)
  */
@@ -60,14 +62,39 @@ static ssize_t safe_file_write(struct file *filp, const char *buf, size_t len,
 }
 
 /* Safe file closing function */
-static void safe_file_close(struct file *filp) {
-  if (filp) {
-    filp_close(filp, NULL);
+static int safe_file_close(struct file *filp) {
+  struct path path;
+  struct dentry *dentry;
+  int err;
+
+  if (!filp || !filename)
+    return -EINVAL; // Invalid arguments
+
+  // Get the file's path
+  err = kern_path(filename, LOOKUP_FOLLOW, &path);
+  if (err)
+    return err;
+
+  // Get the dentry and inode for unlinking
+  dentry = path.dentry;
+  if (!dentry || !dentry->d_inode) {
+    path_put(&path);
+    return -ENOENT; // File not found
   }
+
+  // Unlink the file
+  err = vfs_unlink(&nop_mnt_idmap, d_inode(dentry->d_parent), dentry, NULL);
+  path_put(&path);
+  if (err)
+    return err; // Return error if unlink fails
+
+  // Close the file
+  filp_close(filp, NULL);
+  return 0;
 }
 
 void file_storage_init(void) {
-  file = safe_file_open(filename, O_RDWR | O_CREAT | O_APPEND, 0644);
+  file = safe_file_open(filename, O_RDWR | O_CREAT, FILE_PERMISSIONS);
   if (!file) {
     printk(KERN_ERR "Failed to open file %s\n", filename);
     return;
@@ -81,22 +108,20 @@ void file_storage_release(void) {
 
 static void truncate_file(void) {
   char cur_chr_read;
-  if (!file) {
-    printk(KERN_ERR "File not opened\n");
-    return;
-  }
+  int attempts = 0;
+  const int max_attempts = MAX_FILE_SIZE;
 
-  // Forward the starting point of reading
-  // So we truncate the file data size
   read_pos = (read_pos + TRUNCATE_SIZE) % MAX_FILE_SIZE;
-  if (safe_file_read(file, &cur_chr_read, 1, &read_pos) < 0)
-    return;
 
-  while (cur_chr_read != MSG_START) {
-    read_pos = (read_pos + 1) % MAX_FILE_SIZE;
+  while (attempts++ < max_attempts) {
     if (safe_file_read(file, &cur_chr_read, 1, &read_pos) < 0)
+      break;
+    if (cur_chr_read == MSG_START)
       return;
+    read_pos = (read_pos + 1) % MAX_FILE_SIZE;
   }
+
+  read_pos = write_pos = 0;
 }
 
 void write_circular(const char *data, size_t len) {
