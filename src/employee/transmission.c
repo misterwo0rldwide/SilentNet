@@ -69,6 +69,7 @@ void handle_credentials(void) {
 /* Initialize all transmission objects */
 void data_transmission_init(void) {
   mutex_init(&trns_mutex);
+  file_storage_init();
   handle_credentials();
 }
 
@@ -76,6 +77,7 @@ void data_transmission_init(void) {
 void data_transmission_release(void) {
   // Close socket
   tcp_sock_close(sock);
+  file_storage_release();
 
   /*
    * No need for releasing trns_mutex since
