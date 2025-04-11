@@ -106,19 +106,33 @@ void file_storage_release(void) {
   file = NULL;
 }
 
-static void truncate_file(void) {
+void truncate_file(void) {
   char cur_chr_read;
   int attempts = 0;
+  loff_t distance;
   const int max_attempts = MAX_FILE_SIZE;
 
-  read_pos = (read_pos + TRUNCATE_SIZE) % MAX_FILE_SIZE;
+  if (write_pos >= read_pos)
+    distance = write_pos - read_pos;
+  else
+    distance = MAX_FILE_SIZE - (read_pos - write_pos);
 
-  while (attempts++ < max_attempts) {
+  // If called it means an error was caused, therefore we must fix it
+  if (distance < TRUNCATE_SIZE) {
+    read_pos = write_pos;
+    return;
+  }
+
+  distance -= TRUNCATE_SIZE;
+  read_pos = (read_pos + TRUNCATE_SIZE) % MAX_FILE_SIZE;
+  while (attempts++ < max_attempts && distance > 0) {
     if (safe_file_read(file, &cur_chr_read, 1, &read_pos) < 0)
       break;
-    if (cur_chr_read == MSG_START)
+    if (cur_chr_read == MSG_SEPRATOR_CHR) {
       return;
-    read_pos = (read_pos + 1) % MAX_FILE_SIZE;
+    }
+    read_pos %= MAX_FILE_SIZE;
+    distance--;
   }
 
   read_pos = write_pos = 0;
@@ -132,6 +146,8 @@ void write_circular(const char *data, size_t len) {
     printk(KERN_ERR "Invalid parameters for write_circular\n");
     return;
   }
+
+  write_pos %= MAX_FILE_SIZE; // Ensure write_pos is within bounds
 
   // Check space (with truncation if needed)
   size_t space_remaining;
@@ -172,6 +188,13 @@ int read_circular(char *buf, size_t len) {
   ssize_t ret;
   loff_t original_read_pos = read_pos;
 
+  read_pos %= MAX_FILE_SIZE; // Ensure read_pos is within bounds
+
+  if (buf == NULL) {
+    read_pos = (read_pos + len) % MAX_FILE_SIZE;
+    return len;
+  }
+
   if (!buf || len == 0 || len > MAX_FILE_SIZE) {
     printk(KERN_ERR "Invalid parameters for read_circular\n");
     return -EINVAL;
@@ -211,6 +234,7 @@ void backup_data_log(const char *data, size_t len) {
   }
 
   write_circular(data, len);
+  write_circular(MSG_SEPRATOR, 1);
 }
 
 // buf should no less than BUFFER_SIZE (protocol.h)
@@ -237,17 +261,15 @@ int read_backup_data_log(char *buf) {
   ret = read_circular(len_str, SIZE_OF_SIZE);
   if (ret != SIZE_OF_SIZE) {
     printk(KERN_ERR "Failed to read message length (ret=%zd)\n", ret);
-    // Restore original read position on error
-    read_pos = prev_read_pos;
+    truncate_file();
     return ret < 0 ? ret : -EIO;
   }
 
   ret = kstrtoul(len_str, 10, &len);
   if (ret < 0) {
-    printk(KERN_ERR "0.Invalid message length format: %.*s\n", SIZE_OF_SIZE,
-           len_str);
+    printk(KERN_ERR "0.Invalid message length format: %s\n", len_str);
     // Restore original read position on error
-    read_pos = prev_read_pos;
+    truncate_file();
     return ret;
   }
 
@@ -270,6 +292,9 @@ int read_backup_data_log(char *buf) {
     read_pos = prev_read_pos;
     return ret < 0 ? ret : -EIO;
   }
+
+  buf[len + SIZE_OF_SIZE] = '\0'; // Null-terminate the message
+  read_circular(NULL, 1);         // Read the separator
 
   return len + SIZE_OF_SIZE; // Total bytes read
 }

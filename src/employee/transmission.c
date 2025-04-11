@@ -11,6 +11,8 @@ static struct socket *sock;    // Struct socket
 static bool connected = false; // Boolean which indicates if currently connected
 static struct mutex trns_mutex; // Mutex for thread safe socket handling
 
+int i = 0;
+
 static char cred[BUFFER_SIZE];
 
 static void disconnect(char *msg, size_t len) {
@@ -23,7 +25,6 @@ static void disconnect(char *msg, size_t len) {
   if (!msg || len <= 0)
     return;
 
-  printk(KERN_INFO "Failed to send message %s\n", msg);
   backup_data_log(msg, len);
 }
 
@@ -67,9 +68,11 @@ void transmit_data(struct work_struct *work) {
   } else if (sock && sock->sk && sock->sk->sk_state == TCP_ESTABLISHED) {
     // If sending message was successful then employee is connected to server
     // So now we will try to flush the backup data to the server
-    while ((msg_len = read_backup_data_log(msg_buf)) > 0) {
+    ret = read_backup_data_log(msg_buf);
+    while (ret > 0) {
+      msg_len = ret;
       if (msg_len > BUFFER_SIZE) {
-        printk(KERN_ERR "Invalid message length: %zu\n", msg_len);
+        printk(KERN_ERR "Invalid message length: %lu\n", msg_len);
         break;
       }
 
@@ -78,7 +81,7 @@ void transmit_data(struct work_struct *work) {
         disconnect(msg_buf, msg_len);
         break;
       }
-      printk(KERN_INFO "Sent backup data: %s\n", msg_buf);
+      ret = read_backup_data_log(msg_buf);
     }
   }
 

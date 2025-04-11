@@ -138,6 +138,8 @@ static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
     return 0;
 
   code = (unsigned int)regs->dx; // Third paramater
+  if (code == 0 || code == 1)
+    return 0; // Ignore mouse moves
 
   // Only send code, since code for input is unique
   return protocol_send_message("%s" PROTOCOL_SEPARATOR "%d", MSG_INPUT_EVENT,
