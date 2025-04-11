@@ -16,7 +16,9 @@
 #include <linux/namei.h>
 #include <linux/stat.h>
 
-#define MAX_FILE_SIZE (64 * 1024)  // 64KB
+#define MAX_FILE_SIZE (64 * 1024) // 64KB
+#define READ_POS_OFFSET (MAX_FILE_SIZE + 1)
+#define WRITE_POS_OFFSET (MAX_FILE_SIZE + READ_POS_OFFSET + sizeof(loff_t))
 #define TRUNCATE_PERCENTAGE (0.2f) // 20%
 #define TRUNCATE_SIZE ((size_t)(MAX_FILE_SIZE * TRUNCATE_PERCENTAGE))
 #define FILE_PERMISSIONS (S_IRUSR | S_IWUSR) // 0600 - Only owner can read/write

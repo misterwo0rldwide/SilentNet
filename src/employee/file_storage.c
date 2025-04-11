@@ -15,6 +15,9 @@ static struct file *file;
 static loff_t read_pos = 0;  // File read position
 static loff_t write_pos = 0; // File write position
 
+static loff_t read_pos_offset;  // Offset for read position
+static loff_t write_pos_offset; // Offset for write position
+
 /* Safe file opening function */
 static struct file *safe_file_open(const char *path, int flags, umode_t mode) {
   struct file *filp = NULL;
@@ -38,7 +41,6 @@ static ssize_t safe_file_read(struct file *filp, char *buf, size_t len,
     return -EINVAL;
 
   ret = kernel_read(filp, buf, len, pos);
-
   if (ret < 0)
     printk(KERN_ERR "Error reading file, error: %ld\n", ret);
 
@@ -54,7 +56,6 @@ static ssize_t safe_file_write(struct file *filp, const char *buf, size_t len,
     return -EINVAL;
 
   ret = kernel_write(filp, buf, len, pos);
-
   if (ret < 0)
     printk(KERN_ERR "Error writing to file, error: %ld\n", ret);
 
@@ -94,16 +95,48 @@ static int safe_file_close(struct file *filp) {
 }
 
 void file_storage_init(void) {
+  char buf[sizeof(loff_t)];
   file = safe_file_open(filename, O_RDWR | O_CREAT, FILE_PERMISSIONS);
   if (!file) {
     printk(KERN_ERR "Failed to open file %s\n", filename);
     return;
   }
+
+  /*
+   * In case where the file wasn't erased properly (Computer crashed)
+   * we need to read the last read/write positions from the file
+   * and set them to the current positions.
+   */
+  read_pos_offset = MAX_FILE_SIZE + 1;
+  write_pos_offset = read_pos_offset + sizeof(loff_t);
+
+  safe_file_read(file, buf, sizeof(loff_t), &read_pos_offset);
+  memcpy(&read_pos, buf, sizeof(loff_t));
+
+  safe_file_read(file, buf, sizeof(loff_t), &write_pos_offset);
+  memcpy(&write_pos, buf, sizeof(loff_t));
+
+  read_pos = read_pos > MAX_FILE_SIZE ? 0 : read_pos;
+  write_pos = write_pos > MAX_FILE_SIZE ? 0 : write_pos;
 }
 
 void file_storage_release(void) {
   safe_file_close(file);
   file = NULL;
+}
+
+static void save_file_pos(loff_t *pos, loff_t *offset) {
+  char buf[sizeof(loff_t)];
+  if (!file) {
+    printk(KERN_ERR "File not opened\n");
+    return;
+  }
+
+  memcpy(buf, pos, sizeof(loff_t));
+  if (safe_file_write(file, buf, sizeof(loff_t), offset) < 0)
+    printk(KERN_ERR "Failed to write read_pos to file\n");
+
+  offset -= sizeof(loff_t);
 }
 
 void truncate_file(void) {
@@ -235,6 +268,9 @@ void backup_data_log(const char *data, size_t len) {
 
   write_circular(data, len);
   write_circular(MSG_SEPRATOR, 1);
+
+  // Write the write_pos to the file
+  save_file_pos(&write_pos, &write_pos_offset);
 }
 
 // buf should no less than BUFFER_SIZE (protocol.h)
@@ -296,5 +332,6 @@ int read_backup_data_log(char *buf) {
   buf[len + SIZE_OF_SIZE] = '\0'; // Null-terminate the message
   read_circular(NULL, 1);         // Read the separator
 
-  return len + SIZE_OF_SIZE; // Total bytes read
+  save_file_pos(&read_pos, &read_pos_offset); // Save the read position
+  return len + SIZE_OF_SIZE;                  // Total bytes read
 }
