@@ -110,12 +110,13 @@ def process_employee_data(client : client) -> None:
 
         try:
             data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
-            if data == b'' or len(data) != 2:
-                break
             
             # Timeout exception
             if data == b'ERR':
                 continue
+            
+            if data == b'' or len(data) != 2:
+                break
 
             log_type, log_params = data[0], data[1]
             log_type = log_type.decode()
@@ -127,6 +128,7 @@ def process_employee_data(client : client) -> None:
                 disconnect = client.unsafe_msg_cnt_inc(safety)
 
                 if disconnect:
+                    print("Disconnecting employee due to unsafe message count")
                     break
         
         except Exception as e:
@@ -204,12 +206,12 @@ def process_manager_request(client : client) -> None:
             manager_disconnect = False
 
             data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-            if data == b'':
-                break
-
             # Timeout exception
             if data == b'ERR':
                 continue
+            
+            if data == b'':
+                break
 
             msg_type = data[0].decode()
             msg_params = data[1] if len(data) > 1 else ""
@@ -265,6 +267,7 @@ def process_manager_request(client : client) -> None:
                 disconnect = client.unsafe_msg_cnt_inc(safety)
 
                 if disconnect:
+                    print("Disconnecting manager due to unsafe message count")
                     manager_disconnect = True
             
             # Send response to manager if needed
