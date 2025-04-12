@@ -1,4 +1,6 @@
-![Logo](https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8" alt="Logo" />
+</p>
 
 ## Silent Net
 
