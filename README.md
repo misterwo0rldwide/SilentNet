@@ -1,5 +1,5 @@
-#![Logo](https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8)
- Silent Net
+![Logo](https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8)
+#Silent Net
 
 A comprehensive employee monitoring system with server-side data collection and manager oversight capabilities.
 
