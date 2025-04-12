@@ -95,7 +95,7 @@ The manager interface provides multiple screens:
 2. Load the kernel module on client machines:
    ```bash
    make
-   sudo insmod kClientHook.ko
+   sudo insmod proj.ko
    ```
 
 3. Start the manager interface:
@@ -108,7 +108,7 @@ The manager interface provides multiple screens:
 
 - Python 3.x
 - Flask (for manager interface)
-- Linux kernel (for client module)
+- Linux 6.11.0-19-generic
 - Network connectivity between components
 
 ## License
