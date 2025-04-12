@@ -26,7 +26,7 @@ proj_run = True
 
 # Clients globals
 clients_connected = [] # List of (thread object, client object)
-names_connected = [] # List of all names of employees wihch are connected
+macs_connected = [] # List of all names of employees wihch are connected
 clients_recv_event = threading.Event()
 clients_recv_lock = threading.Lock()
 
@@ -85,7 +85,7 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         mac, hostname = mac.decode(), hostname.decode()
         
         with clients_recv_lock:
-            names_connected.append(hostname)
+            macs_connected.append(mac)
         
         client.set_address(mac)
         logged = uid_data_base.insert_data(mac, hostname)
@@ -94,11 +94,11 @@ def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
         if not logged:
             log_data_base.client_setup_db(client.get_address())
         
-        process_employee_data(client, hostname)
+        process_employee_data(client, mac)
     
     return False
 
-def process_employee_data(client : client, hostname : str) -> None:
+def process_employee_data(client : client, mac : str) -> None:
     """
         Processes employee's sent data
         
@@ -144,9 +144,9 @@ def process_employee_data(client : client, hostname : str) -> None:
                 print("Disconnecting employee due to unsafe message count")
                 return
     
-    if hostname in names_connected:
+    if mac in macs_connected:
         with clients_recv_lock:
-            names_connected.remove(hostname)
+            macs_connected.remove(mac)
         
     print(f"Employee disconnected: {client.get_ip()}")
 
@@ -265,12 +265,15 @@ def process_manager_request(client : client) -> None:
                 # Delete client from DB
                 client_name = msg_params.decode()
                 mac = uid_data_base.get_mac_by_hostname(client_name)
-
-                # If client is connected then do not erase it's name from overall clients
-                if client_name not in names_connected:                
-                    uid_data_base.delete_mac(mac)
                 
                 log_data_base.delete_mac_records_DB(mac)
+                # If client is connected then do not erase it's name from overall clients
+                if mac not in macs_connected:                
+                    uid_data_base.delete_mac(mac)
+                else:
+                    # If client is connected then erase it from clients list
+                    # But keep the default data in DB
+                    log_data_base.client_setup_db(mac)
 
             elif msg_type == MessageParser.MANAGER_MSG_EXIT:
                 # Manager requested to exit
