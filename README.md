@@ -1,124 +1,131 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8" alt="Logo" />
+  <img src="https://github.com/user-attachments/assets/94e37340-9791-4739-a4bf-f2c3eaebd1c8" alt="Silent Net Logo" width="650"/>
 </p>
 
-## Silent Net
+<h1 align="center">Silent Net</h1>
+<p align="center"><i>Advanced Employee Monitoring & Analytics Platform</i></p>
 
-A comprehensive employee monitoring system with server-side data collection and manager oversight capabilities.
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version 1.0.0"/>
+  <img src="https://img.shields.io/badge/kernel-6.11.0_19_generic-orange" alt="Kernel 6.11.0-19-generic"/>
+  <img src="https://img.shields.io/badge/license-GPL-green" alt="GPL License"/>
+</p>
 
-## Overview
+---
 
-Silent Net is a project designed to monitor employee activities in a networked environment. It consists of three main components:
+## 🔍 Overview
 
-1. **Kernel Module Client** - Hooks into kernel functions to monitor system activities
-2. **Server** - Collects and stores data from clients
-3. **Manager Interface** - Web-based dashboard for administrators to view employee activities
+**Silent Net** delivers enterprise-grade employee monitoring with unparalleled depth and security. Built on kernel-level hooking technology, it provides real-time visibility into employee activities while maintaining robust security and management controls.
 
-The system provides real-time monitoring of various employee activities including process creation, input events, CPU usage, and network communication patterns.
+### Key Features
 
-## Components
+- **Comprehensive Monitoring** - Capture process creation, input events, CPU usage, and network patterns
+- **Secure Architecture** - End-to-end encryption with multi-layered authentication
+- **Intuitive Management** - Real-time web dashboard with powerful visualization tools
+- **Scalable Deployment** - Support for multiple clients with centralized management
 
-### Kernel Module Client
+---
 
-The client-side kernel module (`kClientHook.c`) monitors:
+## 🏗️ Architecture
 
-- Process creation
-- Input events (keyboard/mouse)
-- CPU usage statistics
-- Network communication
+Silent Net employs a three-tier architecture:
 
-The module uses kprobes to hook into critical kernel functions like process forking, input event handling, and network communications, sending data back to the server.
+### 1. Kernel Module Client
 
-### Server
+The core monitoring engine that operates at OS kernel level:
 
-The server component (`server.py`) is responsible for:
+- **Kernel Integration** - Utilizes kprobes to hook critical system functions
+- **Low Footprint** - Minimal performance impact while collecting detailed metrics
+- **Stealth Operation** - Transparent collection of user activities
+- **Comprehensive Coverage** - Monitors processes, inputs, CPU, and networking
 
-- Accepting connections from clients and managers
-- Storing collected data in databases
-- Authentication of manager connections
-- Processing and organizing client data
+### 2. Central Server
 
-The server can handle multiple client connections simultaneously and enforces security measures through encrypted communications.
+The intelligence hub that manages all aspects of the monitoring ecosystem:
 
-### Manager Interface
+- **Multi-client Management** - Handles concurrent connections securely
+- **Data Warehousing** - Structured storage of all collected metrics
+- **Authentication** - Manager identity verification and access control
+- **Data Processing** - Real-time analysis of incoming monitoring data
 
-The manager interface (`manager.py`) provides:
+### 3. Manager Interface
 
-- Web-based dashboard using Flask
-- Authentication for administrators
-- Real-time employee activity monitoring
-- Configuration options for the monitoring system
-- Employee data visualization and statistics
+The command center for administrators:
 
-## Security Features
+- **Interactive Dashboard** - Flask-based web interface for monitoring activities
+- **Data Visualization** - Real-time graphs and analytics
+- **Configuration Controls** - Customizable monitoring parameters
+- **User Management** - Employee activity oversight and reporting
 
-- Encrypted communication between components
-- Password protection for manager access
-- Safety parameters to prevent malicious connections
-- Secure storage of monitoring data
+---
 
-## Technical Details
+## 🔐 Security Framework
 
-### Server Configuration
+Silent Net implements enterprise-grade security at all levels:
 
-The server accepts the following parameters:
+- **Transport Layer Security** - Encrypted communications between components
+- **Authentication Protocols** - Secure password protection for administrator access
+- **Threat Mitigation** - Automatic disconnection for suspicious activity patterns
+- **Data Protection** - Secure storage of all monitoring information
 
-- `max_clients`: Maximum number of clients that can connect (default: 5)
-- `safety`: Number of invalid messages allowed before disconnection (default: 5)
-- `password`: Manager authentication password (default: "itzik")
+---
 
-Example: `python server.py 10 3 my_secure_password`
+## 🚀 Getting Started
 
-### Data Collection
+### Server Deployment
 
-The system collects various types of data:
+```bash
+cd server
+python server.py <max_clients> <safety> <password>
+```
 
-- Process creation events
-- User input activity
-- CPU usage by core
-- Network communication categorized by type (web, email, gaming, etc.)
+Configuration parameters:
+- `max_clients`: Maximum concurrent client connections (default: 5)
+- `safety`: Tolerance limit for invalid messages (default: 5)
+- `password`: Manager authentication credentials (default: "itzik")
 
-### Manager Dashboard
+### Client Installation
 
-The manager interface provides multiple screens:
+```bash
+make
+sudo insmod proj.ko
+```
 
-- Login screen
-- Settings configuration
-- Employee list with activity percentages
-- Detailed statistics for individual employees
-- Real-time data visualization
+### Manager Setup
 
-## Installation
+```bash
+cd manager
+python manager.py
+```
 
-1. Set up the server component:
-   ```bash
-   cd server
-   python server.py <max_clients> <safety> <password>
-   ```
+Access the dashboard at `http://localhost:5000` by default.
 
-2. Load the kernel module on client machines:
-   ```bash
-   make
-   sudo insmod proj.ko
-   ```
+---
 
-3. Start the manager interface:
-   ```bash
-   cd manager
-   python manager.py
-   ```
+## 📊 Analytics Capabilities
 
-## Requirements
+Silent Net collects and visualizes key metrics:
 
-- Python 3.x
-- Flask (for manager interface)
-- Linux 6.11.0-19-generic
-- Network connectivity between components
+- **Process Analytics** - Track application usage patterns and durations
+- **Input Activity** - Monitor keyboard and mouse engagement levels
+- **System Utilization** - Core-by-core CPU usage statistics
+- **Network Classification** - Communication categorized by type (web, email, etc.)
 
-## License
+---
 
-This project is licensed under the GPL License - see the LICENSE file for details.
+## 📋 System Requirements
 
-## Author
+- **Server**: Python 3.x, Flask framework
+- **Client**: Linux 6.11.0-19-generic kernel
+- **Manager**: Python 3.x, modern web browser
+- **Network**: TCP/IP connectivity between all components
 
-Omer Kfir
+---
+
+## 📜 License
+
+This project is distributed under the GNU General Public License (GPL).
+
+---
+
+<p align="center">Developed by <strong>Omer Kfir</strong> | &copy; 2025</p>
