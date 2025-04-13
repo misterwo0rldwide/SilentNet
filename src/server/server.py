@@ -110,7 +110,7 @@ def process_employee_data(client : client, mac : str) -> None:
         @log_params -> Logging message paramteres
     """
 
-    print(f"Employee connected: {client.get_ip()}")
+    print(f"\nEmployee connected: {client.get_ip()}")
     while proj_run:
 
         try:
@@ -148,7 +148,7 @@ def process_employee_data(client : client, mac : str) -> None:
         with clients_recv_lock:
             macs_connected.remove(mac)
         
-    print(f"Employee disconnected: {client.get_ip()}")
+    print(f"\nEmployee disconnected: {client.get_ip()}")
 
 def get_employee_stats(client_name : str) -> str:
     """
@@ -207,7 +207,7 @@ def process_manager_request(client : client) -> None:
     """
     global max_clients, safety
 
-    print(f"Manager connnected: {client.get_ip()}")
+    print(f"\nManager connnected: {client.get_ip()}")
     while proj_run:
 
         try:
@@ -302,7 +302,7 @@ def process_manager_request(client : client) -> None:
                 print("Disconnecting manager due to unsafe message count")
                 return
     
-    print(f"Manager disconnected: {client.get_ip()}")
+    print(f"\nManager disconnected: {client.get_ip()}")
 
 def remove_disconnected_client(client : client) -> None:
     """
