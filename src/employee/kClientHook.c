@@ -12,8 +12,8 @@
 #include "headers.h"
 #include "protocol.h"
 #include "tcp_socket.h"
-#include "transmission.h"
 #include "workqueue.h"
+#include "transmission.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Omer Kfir");
