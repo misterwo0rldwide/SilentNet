@@ -511,7 +511,7 @@ class UserId (DBHandler):
         
         # If list of result not empty then mac already exists in table
         if output:
-            print(f"{mac} -> Already logged in")
+            print(f"\n{mac} -> Have already logged in before")
             already_logged = True
 
         # We will count the amount of times the hostname shows in the table
