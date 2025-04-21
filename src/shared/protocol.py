@@ -131,7 +131,7 @@ class TCPsocket:
         
         else:
             self.__sock = sock
-            self.__ip = self.__sock.getsockname()[0]
+            self.__ip = self.__sock.getpeername()[0]
     
     def set_timeout(self, time):
         """

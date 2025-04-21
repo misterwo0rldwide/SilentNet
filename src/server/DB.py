@@ -508,31 +508,30 @@ class UserId (DBHandler):
 
         command = f"SELECT hostname FROM {self.table_name} WHERE mac = ?;"
         output = self.commit(command, mac)
-        
-        # If list of result not empty then mac already exists in table
+
         if output:
             print(f"\n{mac} -> Have already logged in before")
             already_logged = True
 
-        # We will count the amount of times the hostname shows in the table
-        # In order for having unique names for manager to being able to differnce
-        # Between clients
+        # Fetch all hostnames starting with the given hostname
+        command = f"SELECT hostname FROM {self.table_name} WHERE hostname LIKE ? || '%';"
+        results = self.commit(command, hostname)
+        hostnames = {row[0] for row in results}
 
-        command = f"SELECT COUNT(*) FROM {self.table_name} WHERE hostname LIKE ? || '%';"
-        count = self.commit(command, hostname)[0][0]
+        new_hostname = hostname
+        if new_hostname in hostnames:
+            i = 1
+            while f"{hostname}{i}" in hostnames:
+                i += 1
+            new_hostname = f"{hostname}{i}"
 
-        if count > 0:
-            hostname = f"{hostname}{count}"
-        
-        # In case the mac already exists in the table then we will update the hostname
-        # Into a valid one
         if already_logged:
             command = f"UPDATE {self.table_name} SET hostname = ? WHERE mac = ?;"
-        
+            self.commit(command, new_hostname, mac)
         else:
-            command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?,?);"
-        
-        self.commit(command, mac, hostname)
+            command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?, ?);"
+            self.commit(command, mac, new_hostname)
+
         return already_logged
     
     def update_name(self, prev_name : str, new_name : str):
