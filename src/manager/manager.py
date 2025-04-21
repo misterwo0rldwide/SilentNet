@@ -219,7 +219,7 @@ def attempt_server_connection() -> bool:
     if not manager_connected:
         return render_template("loading_screen.html")
     
-    manager_server_sock.set_timeout(0.1)
+    manager_server_sock.set_timeout(5)
 
 def main():
     port = TCPsocket.get_free_port()
