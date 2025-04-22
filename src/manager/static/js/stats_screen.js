@@ -8,6 +8,18 @@ function getRandomColor() {
     return `rgba(${r}, ${g}, ${b}, 0.8)`;
 }
 
+function refreshData() {
+    const button = document.querySelector('.refresh-btn');
+    button.disabled = true;
+    button.textContent = 'Refreshing...';
+    
+    // Get the current client name from the page
+    const clientName = document.getElementById('clientName').textContent;
+    
+    // Reload the page with the current client name
+    window.location.href = `/stats_screen?client_name=${encodeURIComponent(clientName)}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Stats Data:', stats);
 

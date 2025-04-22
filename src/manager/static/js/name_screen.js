@@ -21,10 +21,12 @@ function deleteName(name) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Find and remove the name card from the DOM
+                // Find the exact name card to remove
                 const cards = document.querySelectorAll('.name-card');
                 cards.forEach(card => {
-                    if (card.textContent.includes(name)) {
+                    const button = card.querySelector('.button');
+                    if (button && button.textContent.trim() === name || 
+                        button.textContent.trim() === name + '...') {
                         card.remove();
                     }
                 });

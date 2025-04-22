@@ -12,6 +12,7 @@
 <body>
     <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Logo" class="logo">
     <button class="return-btn" onclick="window.location.href='/employees'">Return</button>
+    <button class="refresh-btn" onclick="refreshData()">Refresh</button>
     <div class="client-name-container">
         Client: <span id="clientName">{{ client_name }}</span>
     </div>
