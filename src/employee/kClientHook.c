@@ -58,8 +58,8 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   struct timespec64 tv; // Measure current time
   static long long int last_tv = 0;
   char cpu_load_msg[BUFFER_SIZE + REAL_TIME_LENGTH] = {0}; // total cpu load
-  char temp_buffer[BUFFER_SIZE / 16] = {0}; // Temporary buffer for formatting
-  char time_buf[REAL_TIME_LENGTH] = {0};    // Buffer for the time string
+  char time_buf[REAL_TIME_LENGTH] = {0}; // Buffer for the time string
+  int msg_len = 0;                       // Track string length manually
 
   // Current cpu times
   unsigned long idle_time = 0, idle_delta = 0;
@@ -78,14 +78,20 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
     return 0;
   }
 
-  // Send only after CPU_USAGE_DELAY has passed
+  // Increase delay for slower systems
   if (tv.tv_sec - last_tv < CPU_USAGE_DELAY)
     return 0;
 
-  // Initialize the message with the message type
-  snprintf(cpu_load_msg, sizeof(cpu_load_msg), "%s", MSG_CPU_USAGE);
+  // Initialize the message with the message type and track length
+  msg_len = snprintf(cpu_load_msg, sizeof(cpu_load_msg), "%s", MSG_CPU_USAGE);
 
-  for (cpu_core = 0; cpu_core < NR_CPUS; cpu_core++) {
+  // Only process online CPUs (or just limit to first few CPUs if
+  // for_each_online_cpu isn't available)
+  for (cpu_core = 0; cpu_core < min(4, NR_CPUS); cpu_core++) {
+    // Skip inactive CPUs if possible
+    if (!cpu_online(cpu_core))
+      continue;
+
     idle_time = get_cpu_idle(cpu_core);
     actv_time = get_cpu_active(cpu_core);
 
@@ -108,24 +114,24 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
 
     cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
 
-    snprintf(temp_buffer, sizeof(temp_buffer), PROTOCOL_SEPARATOR "%d,%d",
-             cpu_core, cpu_usage);
-
-    // Check if we have enough space in the buffer
-    if (strlen(cpu_load_msg) + strlen(temp_buffer) < sizeof(cpu_load_msg)) {
-      strcat(cpu_load_msg, temp_buffer);
+    // Check if we have space left and append directly with length tracking
+    if (msg_len < sizeof(cpu_load_msg) - 20) {
+      int written =
+          snprintf(cpu_load_msg + msg_len, sizeof(cpu_load_msg) - msg_len,
+                   PROTOCOL_SEPARATOR "%d,%d", cpu_core, cpu_usage);
+      if (written > 0)
+        msg_len += written;
+      else
+        return -1; // Error in snprintf
     }
   }
 
-  get_real_time(time_buf); // Get the real time
+  // Only get time and send message if we have data
+  if (msg_len > (int)strlen(MSG_CPU_USAGE) && !first_run) {
+    get_real_time(time_buf); // Get the real time
 
-  // Add real time of cpu usage
-  strcat(cpu_load_msg, ",");
-  strcat(cpu_load_msg, time_buf);
-
-  // Send the aggregated message (only if we have data to send)
-  if (strlen(cpu_load_msg) > strlen(MSG_CPU_USAGE) && !first_run) {
-    protocol_send_message("%s", cpu_load_msg);
+    // Add time to the message
+    protocol_send_message("%s,%s", cpu_load_msg, time_buf);
   }
 
   first_run = false; // Set the flag to false after the first run

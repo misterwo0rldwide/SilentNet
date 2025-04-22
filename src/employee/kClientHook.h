@@ -20,7 +20,7 @@
  * frequently uses this functions Hooking such function can crash the computer
  */
 
-#define CPU_USAGE_DELAY (2 * 60) // Two minutes
+#define CPU_USAGE_DELAY (10) // Two minutes
 
 #define KEY_MINUS 12
 #define KEY_X 45
