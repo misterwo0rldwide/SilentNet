@@ -110,14 +110,20 @@ class DBHandler():
             @command: SQL command to execute
             @command_args: Arguments for the command
         """
+        if not self.conn or not self.cursor:
+            raise ValueError("Database connection not established")
+
         ret_data = ""
 
         with self._lock:
             try:
-                ret_data = self.cursor.execute(command, command_args).fetchall()
+                self.cursor.execute(command, command_args)
+                ret_data = self.cursor.fetchall()
                 self.conn.commit()
             except Exception as e:
                 self.conn.rollback()
+                # Reset cursor
+                self.cursor = self.conn.cursor()
                 print(f"Commit DB exception {e}")
         
         return ret_data

@@ -475,9 +475,12 @@ def main():
 
     # Initialize database connections
     db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
-    conn, cursor = DBHandler.connect_DB(db_path)
-    log_data_base = UserLogsORM(conn, cursor, UserLogsORM.USER_LOGS_NAME)
-    uid_data_base = UserId(conn, cursor, UserId.USER_ID_NAME)
+
+    conn1, cursor1 = DBHandler.connect_DB(db_path)
+    conn2, cursor2 = DBHandler.connect_DB(db_path)
+
+    log_data_base = UserLogsORM(conn1, cursor1, UserLogsORM.USER_LOGS_NAME)
+    uid_data_base = UserId(conn2, cursor2, UserId.USER_ID_NAME)
 
     # Start server
     try:
@@ -488,7 +491,8 @@ def main():
     finally:
         # Clean up resources
         server_comm.close()
-        DBHandler.close_DB(conn, cursor)
+        DBHandler.close_DB(conn1, cursor1)
+        DBHandler.close_DB(conn2, cursor2)
         
         # Clean up client connections
         for client_thread, client_sock in clients_connected:
