@@ -8,6 +8,8 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+#include <linux/types.h> // For uint16_t
+
 /* Message types */
 #define MSG_AUTH "CAU" // Starting credentials message
 
@@ -20,17 +22,15 @@
 #define PROTOCOL_SEPARATOR "\x1f"
 #define PROTOCOL_SEPARATOR_CHR '\x1f'
 
-/* Destination information */
-#define DEST_IP "10.100.102.103"
-#define DEST_IP_NUM ((10 << 24) | (100 << 16) | (102 << 8) | 103)
-#define DEST_PORT (6734)
-
 /* Protocol buffer handling */
 #define BUFFER_SIZE (1024 / 4)
 #define SIZE_OF_SIZE (4) // Characters amount of size of a message
 
 int protocol_format(char *, const char *, ...);
 int protocol_send_message(const char *, ...);
+
+extern char *dAddress;
+extern uint16_t dPort;
 
 /* PROTOCOL_H */
 #endif

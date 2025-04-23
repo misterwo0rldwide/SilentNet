@@ -47,7 +47,7 @@ void transmit_data(struct work_struct *work) {
       goto end;
     }
 
-    ret = tcp_sock_connect(sock, DEST_IP, DEST_PORT);
+    ret = tcp_sock_connect(sock, dAddress, dPort);
     if (ret < 0) {
       disconnect(curr_msg->msg_buf, curr_msg->length);
       goto end;

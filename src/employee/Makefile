@@ -1,15 +1,18 @@
 
 ifneq ($(KERNELRELEASE),)
 	obj-m += proj.o
-	proj-objs := kClientHook.o tcp_socket.o protocol.o workqueue.o transmission.o mac_find.o cpu_stats.o file_handling/file_storage.o hide/hide_module.o
+	proj-objs := kClientHook.o tcp_socket.o protocol.o workqueue.o\
+				 transmission.o mac_find.o cpu_stats.o\
+				 file_handling/file_storage.o hide/hide_module.o hide/hide_tcp_sock.o
 
 else
     KERNEL_SOURCE := /lib/modules/$(shell uname -r)/build
     PWD := $(shell pwd)
+	FLAGS = -C $(KERNEL_SOURCE)
 
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	make $(FLAGS) M=$(PWD) modules
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	make $(FLAGS) M=$(PWD) clean
 endif

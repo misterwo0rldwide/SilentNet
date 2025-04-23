@@ -11,6 +11,15 @@
 
 #include <linux/stdarg.h> // Handling unkown amount of arguments
 
+char *dAddress = "10.100.102.103";
+uint16_t dPort = 6734;
+
+module_param(dAddress, charp, 0644);
+module_param(dPort, ushort, 0644);
+
+MODULE_PARM_DESC(dAddress, "Destination address");
+MODULE_PARM_DESC(dPort, "Destination port");
+
 /* Formats a message by protocol */
 int protocol_format(char *dst, const char *format, ...) {
   va_list args;

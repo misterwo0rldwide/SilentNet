@@ -7,6 +7,7 @@
 #ifndef TRANSMISSION_H
 #define TRANSMISSION_H
 
+#include "file_handling/file_storage.h"
 #include "headers.h"
 #include "mac_find.h"
 #include "protocol.h"

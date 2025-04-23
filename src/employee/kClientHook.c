@@ -19,7 +19,15 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Omer Kfir");
-MODULE_DESCRIPTION("Final project");
+MODULE_DESCRIPTION(
+    "Employee side.\n"
+    "This module is responsible for hooking the kernel and "
+    "sending data to the server.\n"
+    "It uses kprobes to hook into the kernel and send data to "
+    "the server.\n"
+    "It also uses a workqueue to send data in the background.\n");
+MODULE_VERSION("1.0");
+MODULE_ALIAS("SilentNet");
 
 /* Kprobes structures */
 static struct kprobe kps[PROBES_SIZE] = {
