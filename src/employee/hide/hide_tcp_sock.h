@@ -2,6 +2,7 @@
 #define HIDE_TCP_SOCK_H
 
 #include <linux/ftrace.h> // For ftrace functionality
+#include <linux/in.h>     // For in_aton()
 #include <linux/inet.h>   // For networking and socket handling (e.g., htons)
 #include <linux/net.h>    // For socket-related definitions (e.g., struct sock)
 #include <linux/ptrace.h> // for struct pt_regs
