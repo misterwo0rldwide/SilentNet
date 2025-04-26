@@ -10,6 +10,7 @@ from typing import Optional, Union
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
+from cryptography.hazmat.primitives.asymmetric import dh
 from random import randint
 
 __author__ = "Omer Kfir"
@@ -34,6 +35,12 @@ class DiffieHellman:
 
         self.prime = prime
         self.base = base
+        
+        if self.prime == 0 or self.base == 0:
+            parameters = dh.generate_parameters(generator=2, key_size=512)
+            self.prime = parameters.parameter_numbers().p
+            self.generator = parameters.parameter_numbers().g
+            
         self.private_key = self._generate_private_key()
 
     def _generate_private_key(self) -> int:
@@ -44,7 +51,7 @@ class DiffieHellman:
             OUTPUT: Private key (int)
         """
 
-        return randint(2, 20)
+        return randint(2, self.prime - 2)
 
     def get_public_key(self) -> int:
         """
@@ -129,7 +136,7 @@ class EncryptionHandler:
         Main class to handle all encryption tasks
     """
 
-    def __init__(self, base: int = None, prime: int = None):
+    def __init__(self, base: int = 0, prime: int = 0):
         """
             Initialize EncryptionHandler with prime and base for DH
 

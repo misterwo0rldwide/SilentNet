@@ -353,7 +353,7 @@ class client (TCPsocket):
 
         # If its a manager object then only build base for encryption
         if manager:
-            self.__encryption = EncryptionHandler(randint(2, 80), randint(10, 80))
+            self.__encryption = EncryptionHandler()
     
     def set_address(self, mac_addr) -> None:
         """
