@@ -56,19 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxDate = new Date(Math.max(...parsedDates));
 
     inactivityChart = new Chart(document.getElementById('inactivityChart'), {
-        type: 'line',
+        type: 'scatter',
         data: {
-            labels: parsedDates,
             datasets: [{
                 label: 'Inactive Time (minutes)',
-                data: stats.inactivity.data,
-                borderColor: '#00d1b2',
-                backgroundColor: 'rgba(0, 209, 178, 0.1)',
-                borderWidth: 2,
+                data: parsedDates.map((date, index) => ({
+                    x: date,
+                    y: stats.inactivity.data[index]
+                })),
+                backgroundColor: '#00d1b2',
                 pointRadius: 5,
-                pointBackgroundColor: '#00d1b2',
-                fill: true,
-                tension: 0.4,
+                pointHoverRadius: 7,
             }]
         },
         options: {
@@ -107,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     callbacks: {
                         label: (context) => {
                             const label = context.dataset.label || '';
-                            const value = context.raw || 0;
+                            const value = context.raw.y || 0;
                             return `${label}: ${value} minutes`;
                         }
                     }
@@ -270,19 +268,17 @@ function expandCard(card) {
         const maxDate = new Date(Math.max(...parsedDates));
 
         new Chart(expandedCard.querySelector('canvas'), {
-            type: 'line',
+            type: 'scatter',
             data: {
-                labels: parsedDates,
                 datasets: [{
                     label: 'Inactive Time (minutes)',
-                    data: stats.inactivity.data,
-                    borderColor: '#00d1b2',
-                    backgroundColor: 'rgba(0, 209, 178, 0.1)',
-                    borderWidth: 2,
+                    data: parsedDates.map((date, index) => ({
+                        x: date,
+                        y: stats.inactivity.data[index]
+                    })),
+                    backgroundColor: '#00d1b2',
                     pointRadius: 5,
-                    pointBackgroundColor: '#00d1b2',
-                    fill: true,
-                    tension: 0.4,
+                    pointHoverRadius: 7,
                 }]
             },
             options: {
@@ -321,7 +317,7 @@ function expandCard(card) {
                         callbacks: {
                             label: (context) => {
                                 const label = context.dataset.label || '';
-                                const value = context.raw || 0;
+                                const value = context.raw.y || 0;
                                 return `${label}: ${value} minutes`;
                             }
                         }
