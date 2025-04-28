@@ -460,6 +460,14 @@ function changeClientName() {
         return;
     }
 
+    // Check for SQL special characters
+    const forbiddenPattern = /['";\\/*\-]/;
+    if (forbiddenPattern.test(newName)) {
+        alert("Name contains invalid characters.");
+        button.disabled = false;
+        return;
+    }
+
     const currentName = document.getElementById('clientName').textContent;
 
     fetch('/update_client_name', {

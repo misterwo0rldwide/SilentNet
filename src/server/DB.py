@@ -510,14 +510,13 @@ class UserId (DBHandler):
             @mac: MAC address of user's computer
             @hostname: User's computer hostname
         """
-        already_logged = False
 
         command = f"SELECT hostname FROM {self.table_name} WHERE mac = ?;"
         output = self.commit(command, mac)
 
         if output:
             print(f"\n{mac} -> Have already logged in before")
-            already_logged = True
+            return True
 
         # Fetch all hostnames starting with the given hostname
         command = f"SELECT hostname FROM {self.table_name} WHERE hostname LIKE ? || '%';"
@@ -531,14 +530,11 @@ class UserId (DBHandler):
                 i += 1
             new_hostname = f"{hostname}{i}"
 
-        if already_logged:
-            command = f"UPDATE {self.table_name} SET hostname = ? WHERE mac = ?;"
-            self.commit(command, new_hostname, mac)
-        else:
-            command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?, ?);"
-            self.commit(command, mac, new_hostname)
 
-        return already_logged
+        command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?, ?);"
+        self.commit(command, mac, new_hostname)
+
+        return False
     
     def update_name(self, prev_name : str, new_name : str):
         """

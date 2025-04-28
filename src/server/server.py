@@ -133,6 +133,9 @@ def process_employee_data(client : client, mac : str) -> None:
                 disconnect = client.unsafe_msg_cnt_inc(safety)
 
                 if disconnect:
+                    log_data_base.delete_mac_records_DB(mac)
+                    uid_data_base.delete_mac(mac)
+                
                     print("Disconnecting employee due to unsafe message count")
                     break
         
@@ -141,8 +144,14 @@ def process_employee_data(client : client, mac : str) -> None:
             disconnect = client.unsafe_msg_cnt_inc(safety)
 
             if disconnect:
+                # If user disconnect due to unsafe message count
+                # Erase all its related data to prevent DOS on the DB
+                
+                log_data_base.delete_mac_records_DB(mac)
+                uid_data_base.delete_mac(mac)
+            
                 print("Disconnecting employee due to unsafe message count")
-                return
+                break
     
     if mac in macs_connected:
         with clients_recv_lock:
@@ -268,9 +277,7 @@ def process_manager_request(client : client) -> None:
                 
                 log_data_base.delete_mac_records_DB(mac)
                 # If client is connected then do not erase it's name from overall clients
-                if mac not in macs_connected:                
-                    uid_data_base.delete_mac(mac)
-                else:
+                if mac in macs_connected:
                     # If client is connected then erase it from clients list
                     # But keep the default data in DB
                     log_data_base.client_setup_db(mac)
