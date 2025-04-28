@@ -10,6 +10,7 @@ from time import sleep
 from random import uniform
 from keyboard import on_press_key
 from socket import timeout
+import traceback
 
 # Append parent directory to be able to append protocol
 path = os.path.dirname(__file__)
@@ -141,6 +142,7 @@ def process_employee_data(client : client, mac : str) -> None:
         
         except Exception as e:
             print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
+            print(traceback.format_exc())
             disconnect = client.unsafe_msg_cnt_inc(safety)
 
             if disconnect:
@@ -247,7 +249,7 @@ def process_manager_request(client : client) -> None:
                 ret_msg = []
 
                 for mac, hostname in clients:
-                    ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)}")
+                    ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)},{1 if mac in macs_connected else 0}")
 
                 ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
             
@@ -276,11 +278,14 @@ def process_manager_request(client : client) -> None:
                 mac = uid_data_base.get_mac_by_hostname(client_name)
                 
                 log_data_base.delete_mac_records_DB(mac)
+                uid_data_base.delete_mac(mac)
+
                 # If client is connected then do not erase it's name from overall clients
                 if mac in macs_connected:
                     # If client is connected then erase it from clients list
                     # But keep the default data in DB
                     log_data_base.client_setup_db(mac)
+                    uid_data_base.insert_data(mac, client_name)
 
             elif msg_type == MessageParser.MANAGER_MSG_EXIT:
                 # Manager requested to exit
@@ -302,7 +307,8 @@ def process_manager_request(client : client) -> None:
                 break
         
         except Exception as e:
-            print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
+            print(f"---\nError -> {e}\nfrom manager: {client.get_ip()}\n---")
+            print(traceback.format_exc())
             disconnect = client.unsafe_msg_cnt_inc(safety)
 
             if disconnect:
@@ -425,6 +431,7 @@ def get_clients(server_comm : server) -> None:
 
         except Exception as e:
             print(f"Error -> accepting client: {e}")
+            print(traceback.format_exc())
     
     print('Server shutting down')
 

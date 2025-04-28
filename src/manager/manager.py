@@ -152,8 +152,8 @@ def employees_screen():
 
     stats = []
     for client in connected_clients:
-        name, active = client.decode().split(",")
-        stats.append([name, int(active)])
+        name, active, connected = client.decode().split(",")
+        stats.append([name, int(active), int(connected)])
 
     return render_template("name_screen.html", name_list=stats)
 
