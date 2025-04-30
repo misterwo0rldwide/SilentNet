@@ -135,12 +135,11 @@ class SilentNetServer:
 
         print('Server shutting down')
 
-    def _handle_client_connection(self, client):
+    def _handle_client_connection(self, client : client):
         """
         Determine client type and route to appropriate handler
         
-        Args:
-            client: Protocol client object
+        
         """
         data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
         if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
