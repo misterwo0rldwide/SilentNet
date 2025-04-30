@@ -2,7 +2,7 @@
 'Silent net' Manager Web Interface
 
 This module implements the manager-side web interface for the Silent net project.
-It provides a Flask-based web application that allows managers to:
+It provides a Flask-based web application that allows managers to request data from server
 
 The application enforces a screen hierarchy and handles all communication with the server.
 Omer Kfir (C)
