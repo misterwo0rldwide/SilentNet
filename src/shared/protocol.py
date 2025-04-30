@@ -399,8 +399,9 @@ class client (TCPsocket):
 
             return True
         
-        except Exception:
+        except Exception as e:
             # If raised exception then return that function did not manage to complete successfully
+            print(e)
             return False
 
     def connect(self, dst_ip : str, dst_port : int) -> bool:

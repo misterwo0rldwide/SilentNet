@@ -1,18 +1,23 @@
-#   'Silent net' project server
-#   
-#       Contains server side implementation 
-#       Stores and handles DB
-#
-#   Omer Kfir (C)
+"""
+'Silent net' project server implementation
 
-import sys, threading, os, json
+This module contains the server-side implementation for the Silent net project.
+It handles client connections, manages communication, and interfaces with the database.
+
+Omer Kfir (C)
+"""
+
+import sys
+import threading
+import os
+import json
 from time import sleep
 from random import uniform
 from keyboard import on_press_key
 from socket import timeout
 import traceback
 
-# Append parent directory to be able to append protocol
+# Append parent directory to be able to import protocol
 path = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(path, '../shared')))
 
@@ -22,496 +27,468 @@ from DB import *
 
 __author__ = "Omer Kfir"
 
-# Project currently running
-proj_run = True
 
-# Clients globals
-clients_connected = [] # List of (thread object, client object)
-macs_connected = [] # List of all names of employees wihch are connected
-clients_recv_event = threading.Event()
-clients_recv_lock = threading.Lock()
-
-# Configuration parameters
-max_clients = 5 # Max amount of clients connected simultaneously to server
-safety = 5 # Safety parameter (Certain amount of times server allow a client to send data which can not be decoded)
-password = "itzik" # Password for managers when trying to connect in order for a manager to be valid
-manager_connected = False # Flag for if manager is connected or not
-
-# Data base object
-log_data_base = ...
-uid_data_base = ...
-
-def determine_client_type(client : client, msg_type : str, msg : bytes) -> None:
+class SilentNetServer:
     """
-        Determines client type based on first message sent
-        
-        INPUT: client, msg_type, msg
-        OUTPUT: None
-        
-        @client -> Protocol client object
-        @msg_type -> Message type
-        @msg -> Message parameters
+    Main server class that handles all server operations including:
+    - Client connections
+    - Manager connections
+    - Database operations
+    - Server configuration
     """
-    global manager_connected, macs_connected
 
-    # Check if client is a manager
-    if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
+    def __init__(self):
+        """Initialize server with default configuration"""
+        self.max_clients : int = 5
+        self.safety : int = 5
+        self.password : str = "itzik"
+        self.proj_run : bool = True
+        self.manager_connected : bool = False
+        self.clients_connected : list[threading.Thread, client] = []  # List of (thread object, client object)
+        self.macs_connected : list[str] = []  # List of MAC addresses of connected clients
+        self.clients_recv_event : threading.Event = threading.Event()
+        self.clients_recv_lock : threading.Lock = threading.Lock()
+        self.log_data_base : UserLogsORM = None
+        self.uid_data_base : UserId = None
+        self.server_comm : server = None
+
+    def start(self):
+        """Start the server with configured settings"""
+        self._load_configuration()
+        self._initialize_databases()
+        self._setup_keyboard_shortcuts()
+        self._run_server()
+
+    def _load_configuration(self):
+        """Load server configuration from command line or use defaults"""
+        if len(sys.argv) == 4:
+            if sys.argv[1].isnumeric() and sys.argv[2].isnumeric():
+                if 1 <= int(sys.argv[1]) <= 40:
+                    self.max_clients = int(sys.argv[1])
+                else:
+                    print("Warning: Max clients must be between 1 and 40")
+                    print("Using default value instead")
+
+                if 1 <= int(sys.argv[2]) <= 5:
+                    self.safety = int(sys.argv[2])
+                else:
+                    print("Warning: Safety parameter must be between 1 and 5")
+                    print("Using default value instead")
+
+                self.password = sys.argv[3]
+            else:
+                print("Warning: Client max and safety params must be numerical")
+                print("Using default values instead")
+        else:
+            print("Using default configuration values")
+            print("Usage: python server.py <max_clients:int> <safety:int> <password:str>\n\n")
+
+        print(f"Server running with configuration:\nMax clients: {self.max_clients}\n"
+              f"Safety: {self.safety}\nPassword: {self.password}\n\n"
+              "Press 'q' to quit server\nPress 'e' to erase all logs\n")
+
+    def _initialize_databases(self):
+        """Initialize database connections"""
+        db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
+        conn1, cursor1 = DBHandler.connect_DB(db_path)
+        conn2, cursor2 = DBHandler.connect_DB(db_path)
+
+        self.log_data_base = UserLogsORM(conn1, cursor1, UserLogsORM.USER_LOGS_NAME)
+        self.uid_data_base = UserId(conn2, cursor2, UserId.USER_ID_NAME)
+
+    def _setup_keyboard_shortcuts(self):
+        """Setup keyboard shortcuts for server control"""
+        on_press_key('q', lambda _: self.quit_server())
+        on_press_key('e', lambda _: self.erase_all_logs())
+
+    def _run_server(self):
+        """Main server loop to accept and handle client connections"""
+        try:
+            self.server_comm = server(self.safety)
+            self.server_comm.set_timeout(1)
+            self._accept_clients()
+        finally:
+            self._cleanup()
+
+    def _accept_clients(self):
+        """Accept and manage incoming client connections"""
+        while self.proj_run:
+            try:
+                if len(self.clients_connected) < self.max_clients or not self.manager_connected:
+                    client = self.server_comm.recv_client()
+                    client_thread = threading.Thread(target=self._handle_client_connection, args=(client,))
+                    
+                    with self.clients_recv_lock:
+                        self.clients_connected.append((client_thread, client))
+                    
+                    client_thread.start()
+                    
+                    if len(self.clients_connected) >= self.max_clients:
+                        self.clients_recv_event.clear()
+                else:
+                    self.clients_recv_event.wait()
+            except timeout:
+                pass
+            except Exception as e:
+                print(f"Error accepting client: {e}")
+                print(traceback.format_exc())
+
+        print('Server shutting down')
+
+    def _handle_client_connection(self, client):
+        """
+        Determine client type and route to appropriate handler
+        
+        Args:
+            client: Protocol client object
+        """
+        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
+        if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
+            self._remove_disconnected_client(client)
+            return
+
+        msg_type = data[0].decode()
+        if len(self.clients_connected) >= self.max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
+            self._remove_disconnected_client(client)
+            return
+
+        if msg_type == MessageParser.MANAGER_MSG_PASSWORD and self.manager_connected:
+            client.protocol_send(MessageParser.MANAGER_ALREADY_CONNECTED, encrypt=False)
+            self._remove_disconnected_client(client)
+            return
+
+        if self._determine_client_type(client, msg_type, data[1] if len(data) > 1 else b''):
+            self.manager_connected = False
+
+        self._remove_disconnected_client(client)
+
+    def _determine_client_type(self, client, msg_type, msg):
+        """
+        Determine if client is manager or employee and handle accordingly
+        
+        Args:
+            client: Protocol client object
+            msg_type: Type of message received
+            msg: Message content
+            
+        Returns:
+            bool: True if client was a manager, False otherwise
+        """
+        if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
+            return self._handle_manager_connection(client, msg)
+        elif msg_type == MessageParser.CLIENT_MSG_AUTH:
+            self._handle_employee_connection(client, msg)
+        return False
+
+    def _handle_manager_connection(self, client, msg):
+        """
+        Handle manager authentication and connection
+        
+        Args:
+            client: Protocol client object
+            msg: Password message
+            
+        Returns:
+            bool: Always returns True (manager connection handled)
+        """
         ret_msg_type = MessageParser.MANAGER_INVALID_CONN
-
-        # Only encrypt for manager, so then only exchange keys
-        # After manager is connected
         client.exchange_keys()
         msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
 
         if msg != b'':
             msg = msg[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
 
-        if msg == password:
+        if msg == self.password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
-            manager_connected = True
+            self.manager_connected = True
 
-        # Prevent timing attack
-        sleep(uniform(0, 1))
+        sleep(uniform(0, 1))  # Prevent timing attack
         client.protocol_send(ret_msg_type)
 
         if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
-            process_manager_request(client)
+            ManagerHandler(self, client).process_requests()
         
         return True
-    
-    # Check if client is a client
-    elif msg_type == MessageParser.CLIENT_MSG_AUTH:
 
+    def _handle_employee_connection(self, client, msg):
+        """
+        Handle employee authentication and connection
+        
+        Args:
+            client: Protocol client object
+            msg: Authentication message
+        """
         mac, hostname = MessageParser.protocol_message_deconstruct(msg)
         mac, hostname = mac.decode(), hostname.decode()
         
-        with clients_recv_lock:
-            macs_connected.append(mac)
+        with self.clients_recv_lock:
+            self.macs_connected.append(mac)
         
         client.set_address(mac)
-        logged = uid_data_base.insert_data(mac, hostname)
+        logged = self.uid_data_base.insert_data(mac, hostname)
 
-        # Set up DB for client
         if not logged:
-            log_data_base.client_setup_db(client.get_address())
+            self.log_data_base.client_setup_db(client.get_address())
         
-        process_employee_data(client, mac)
-    
-    return False
+        ClientHandler(self, client, mac).process_data()
 
-def process_employee_data(client : client, mac : str) -> None:
-    """
-        Processes employee's sent data
+    def _remove_disconnected_client(self, client):
+        """
+        Remove disconnected client from connected clients list
         
-        INPUT: client, log_type, log_params
-        OUTPUT: None
-        
-        @client -> Protocol client object
-        @log_type -> Logging type of the current message
-        @log_params -> Logging message paramteres
-    """
-
-    print(f"\nEmployee connected: {client.get_ip()}")
-    while proj_run:
-
-        try:
-            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
-            
-            # Timeout exception
-            if data == b'ERR':
-                continue
-            
-            if data == b'' or len(data) != 2:
-                break
-
-            log_type, log_params = data[0], data[1]
-            log_type = log_type.decode()
-
-            # Logging data
-            if log_type in MessageParser.CLIENT_ALL_MSG:
-                log_data_base.insert_data(client.get_address(), log_type, log_params)
-            else:
-                disconnect = client.unsafe_msg_cnt_inc(safety)
-
-                if disconnect:
-                    log_data_base.delete_mac_records_DB(mac)
-                    uid_data_base.delete_mac(mac)
-                
-                    print("Disconnecting employee due to unsafe message count")
-                    break
-        
-        except Exception as e:
-            print(f"---\nError -> {e}\nfrom client: {client.get_address()}\n---")
-            print(traceback.format_exc())
-            disconnect = client.unsafe_msg_cnt_inc(safety)
-
-            if disconnect:
-                # If user disconnect due to unsafe message count
-                # Erase all its related data to prevent DOS on the DB
-                
-                log_data_base.delete_mac_records_DB(mac)
-                uid_data_base.delete_mac(mac)
-            
-                print("Disconnecting employee due to unsafe message count")
-                break
-    
-    if mac in macs_connected:
-        with clients_recv_lock:
-            macs_connected.remove(mac)
-        
-    print(f"\nEmployee disconnected: {client.get_ip()}")
-
-def get_employee_stats(client_name : str) -> str:
-    """
-        Gets all avaliable stats on a client
-        
-        INPUT: client_name
-        OUTPUT: String of all stats
-        
-        @client_name -> Json dumps of all the data
-    """
-    mac_addr = uid_data_base.get_mac_by_hostname(client_name)
-    
-    process_cnt = log_data_base.get_process_count(mac_addr)
-    inactive_times, inactive_after_last = log_data_base.get_inactive_times(mac_addr)
-    words_per_min = int(log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
-
-    core_usage, cpu_usage = log_data_base.get_cpu_usage(mac_addr)
-    ip_cnt = log_data_base.get_reached_out_ips(mac_addr)
-
-    # Insert data into json format for manager
-    data = {
-        "processes": {
-            "labels": [i[0].decode() for i in process_cnt],
-            "data": [i[1] for i in process_cnt]
-        },
-        "inactivity": {
-            "labels": [i[0] for i in inactive_times],
-            "data": [int(i[1]) for i in inactive_times if len(i) == 2]
-        },
-        "wpm": words_per_min,
-        "cpu_usage": {
-            "labels": cpu_usage,
-            "data": {
-                "cores": sorted(list(core_usage.keys())),
-                "usage": [core_usage[core] for core in sorted(core_usage.keys())]
-            }
-        },
-        "ips": {
-            "labels": [i[0].decode() for i in ip_cnt],
-            "data": [i[1] for i in ip_cnt]
-        }
-    }
-    
-    return json.dumps(data)
-
-def process_manager_request(client : client) -> None:
-    """
-        Processes client's sent data
-        
-        INPUT: client, msg_type, msg_params
-        OUTPUT: None
-        
-        @client -> Protocol client object
-        @msg_type -> Message type
-        @msg_params -> Message paramteres
-    """
-    global max_clients, safety
-
-    print(f"\nManager connnected: {client.get_ip()}")
-    while proj_run:
-
-        try:
-            ret_msg = []
-            ret_msg_type = ""
-            manager_disconnect = False
-
-            data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
-            # Timeout exception
-            if data == b'ERR':
-                continue
-            
-            if data == b'':
-                break
-
-            msg_type = data[0].decode()
-            msg_params = data[1] if len(data) > 1 else ""
-
-            # Handle different manager request types
-            if msg_type == MessageParser.MANAGER_SND_SETTINGS:
-                # Update server settings
-                max_clients, safety = MessageParser.protocol_message_deconstruct(msg_params)
-                max_clients, safety = int(max_clients), int(safety)
-                
-            elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
-                # Get list of all clients
-                clients = uid_data_base.get_clients()
-                ret_msg = []
-
-                for mac, hostname in clients:
-                    ret_msg.append(f"{hostname},{log_data_base.get_active_precentage(mac)},{1 if mac in macs_connected else 0}")
-
-                ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
-            
-            elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
-                # Get detailed stats for a specific client
-                ret_msg = [get_employee_stats(msg_params.decode())]  # Due to asterisk when sending 
-                ret_msg_type = MessageParser.MANAGER_GET_CLIENTS
-            
-            elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
-                # Change client hostname
-                prev_name, new_name = MessageParser.protocol_message_deconstruct(msg_params)
-                prev_name, new_name = prev_name.decode(), new_name.decode()
-
-                ret_msg = []
-                
-                # If new_name does not exist
-                if not uid_data_base.check_user_existence(new_name):
-                    uid_data_base.update_name(prev_name, new_name)
-                    ret_msg_type = MessageParser.MANAGER_VALID_CHG
-                else:
-                    ret_msg_type = MessageParser.MANAGER_INVALID_CHG
-            
-            elif msg_type == MessageParser.MANAGER_DELETE_CLIENT:
-                # Delete client from DB
-                client_name = msg_params.decode()
-                mac = uid_data_base.get_mac_by_hostname(client_name)
-                
-                log_data_base.delete_mac_records_DB(mac)
-                uid_data_base.delete_mac(mac)
-
-                # If client is connected then do not erase it's name from overall clients
-                if mac in macs_connected:
-                    # If client is connected then erase it from clients list
-                    # But keep the default data in DB
-                    log_data_base.client_setup_db(mac)
-                    uid_data_base.insert_data(mac, client_name)
-
-            elif msg_type == MessageParser.MANAGER_MSG_EXIT:
-                # Manager requested to exit
-                manager_disconnect = True
-
-            else:
-                disconnect = client.unsafe_msg_cnt_inc(safety)
-
-                if disconnect:
-                    print("Disconnecting manager due to unsafe message count")
-                    manager_disconnect = True
-            
-            # Send response to manager if needed
-            if ret_msg_type:
-                client.protocol_send(ret_msg_type, *ret_msg)
-            
-            # Disconnect manager if required
-            if manager_disconnect:
-                break
-        
-        except Exception as e:
-            print(f"---\nError -> {e}\nfrom manager: {client.get_ip()}\n---")
-            print(traceback.format_exc())
-            disconnect = client.unsafe_msg_cnt_inc(safety)
-
-            if disconnect:
-                print("Disconnecting manager due to unsafe message count")
-                return
-    
-    print(f"\nManager disconnected: {client.get_ip()}")
-
-def remove_disconnected_client(client : client) -> None:
-    """
-        Removes a client from global list of clients that are connected
-        
-        INPUT: client
-        OUTPUT: None
-        
-        @client -> Protocol client object
-    """
-    
-    # If client even exists
-    if not client:
-        return
-    
-    # Search for client thread in list
-    # Lock even when searching since list can change by the time finished
-    # Searching and going to remove
-    
-    with clients_recv_lock:
-        
-        # Search for client in clients list
-        for index in range(len(clients_connected)):
-            _, client_object = clients_connected[index]
-            
-            if client_object == client:
-                del clients_connected[index]
-                break
-
-    client.close()
-    client = None
-
-    # If removed client brings us below max_clients, notify main thread to resume accepting
-    if len(clients_connected) + 1 == max_clients:
-        clients_recv_event.set()
-
-def manage_comm(client : client) -> None:
-    """
-        Manages communication 
-        
-        INPUT: client
-        OUTPUT: None
-        
-        @client -> Protocol client object
-    """
-    global clients_connected, manager_connected
-
-    for _ in range(3):
-        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
-        # Check if valid msg
-        if data == b'' or (data is list and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
-            remove_disconnected_client(client)
+        Args:
+            client: Protocol client object to remove
+        """
+        if not client:
             return
         
-        if data != b'ERR':
-            break
-    
-    msg_type = data[0].decode()
-    if len(clients_connected) >= max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
-        # If client is not manager and max_clients reached, disconnect
-        remove_disconnected_client(client)
-        return
-
-    if msg_type == MessageParser.MANAGER_MSG_PASSWORD and manager_connected:
-        # If manager is already connected, disconnect new manager
-        client.protocol_send(MessageParser.MANAGER_ALREADY_CONNECTED, encrypt=False)
-        remove_disconnected_client(client)
-        return
-
-    # Check if manager or client
-    if determine_client_type(client, msg_type, data[1] if len(data) > 1 else b''):
-        manager_connected = False # Function finishes when communication ends so if manager is not connected, set to false
-
-    # Always clean up disconnected client
-    remove_disconnected_client(client)
-
-def get_clients(server_comm : server) -> None:
-    """
-        Connect clients to server
-        
-        INPUT: server_comm, max_clients
-        OUTPUT: None
-        
-        @server_comm -> Protocol server object
-        @max_clients -> Maximum amount of clients chosen by the manager
-    """
-    global clients_connected
-    
-    # Main loop for receiving clients
-    while proj_run:
-        try:
-            # Check if we can accept more clients
-            if len(clients_connected) < max_clients or not manager_connected:
-                # Accept new client
-                client = server_comm.recv_client()
-                clients_thread = threading.Thread(target=manage_comm, args=(client,))
+        with self.clients_recv_lock:
+            for index in range(len(self.clients_connected)):
+                _, client_object = self.clients_connected[index]
                 
-                # Add client to connected list with proper locking
-                with clients_recv_lock:
-                    clients_connected.append((clients_thread, client))
-                
-                clients_thread.start()
-                
-                # If reached maximum, wait for a slot to open
-                if len(clients_connected) >= max_clients:
-                    clients_recv_event.clear()
-            else:
-                # Efficiently wait for a client slot to open
-                clients_recv_event.wait()
+                if client_object == client:
+                    del self.clients_connected[index]
+                    break
+
+        client.close()
+        client = None
+
+        if len(self.clients_connected) + 1 == self.max_clients:
+            self.clients_recv_event.set()
+
+    def erase_all_logs(self):
+        """Erase all logs from the database"""
+        self.log_data_base.delete_all_records_DB()
+        clients = self.uid_data_base.get_clients()
+
+        for mac, _ in clients:
+            self.log_data_base.client_setup_db(mac)
         
-        except timeout:
-            pass
+        print("\nErased all logs")
 
-        except Exception as e:
-            print(f"Error -> accepting client: {e}")
-            print(traceback.format_exc())
-    
-    print('Server shutting down')
+    def quit_server(self):
+        """Shut down the server gracefully"""
+        self.proj_run = False
 
-def erase_all_logs() -> None:
-    log_data_base.delete_all_records_DB()
-    clients = uid_data_base.get_clients()
-
-    for mac, _ in clients:
-        log_data_base.client_setup_db(mac)
-    
-    print("\nErased all logs")
-
-def quit_server() -> None:
-    global proj_run
-    proj_run = False
-
-def server_settings() -> None:
-    global max_clients, safety, password
-    
-    # Proper command-line argument handling (commented out in original)
-    if len(sys.argv) == 4:
-        if sys.argv[1].isnumeric() and sys.argv[2].isnumeric():
-            if int(sys.argv[1]) > 40 or int(sys.argv[1]) < 1:
-                print("Warning: Max clients must be between 1 and 40")
-                print("Using default value instead")
-            else:
-                max_clients = int(sys.argv[1])
-
-            if int(sys.argv[2]) > 5 or int(sys.argv[2]) < 1:
-                print("Warning: Safety parameter must be between 1 and 5")
-                print("Using default value instead")
-
-            else:
-                safety = int(sys.argv[2])
-            password = sys.argv[3]
-        else:
-            print("Warning: Client max and safety params must be numerical")
-            print("Using default values instead")
-    else:
-        print("Using default configuration values")
-        print("Usage: python server.py <max_clients : int> <safety : int> <password : str>\n\n")
-        # Default values already set in global variables
-    
-    print(f"Server running with the following configuration:\n" + \
-          f"Max clients: {max_clients}\nSafety: {safety}\nPassword: {password}" + \
-            "\n\nFor changing configuration, please restart server" + \
-            "\n\nPress 'q' to quit server\nPress 'e' to erase all logs\n")
-    
-    on_press_key('q', lambda _: quit_server())
-    on_press_key('e', lambda _: erase_all_logs())
-
-def main():
-    global log_data_base, uid_data_base
-    server_settings()
-
-    # Initialize database connections
-    db_path = os.path.join(os.path.dirname(__file__), UserId.DB_NAME)
-
-    conn1, cursor1 = DBHandler.connect_DB(db_path)
-    conn2, cursor2 = DBHandler.connect_DB(db_path)
-
-    log_data_base = UserLogsORM(conn1, cursor1, UserLogsORM.USER_LOGS_NAME)
-    uid_data_base = UserId(conn2, cursor2, UserId.USER_ID_NAME)
-
-    # Start server
-    try:
-        server_comm = server(safety)
-        server_comm.set_timeout(1)
-
-        get_clients(server_comm)
-    finally:
-        # Clean up resources
-        server_comm.close()
-        DBHandler.close_DB(conn1, cursor1)
-        DBHandler.close_DB(conn2, cursor2)
+    def _cleanup(self):
+        """Clean up server resources before shutdown"""
+        self.server_comm.close()
+        DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
+        DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
         
-        # Clean up client connections
-        for client_thread, client_sock in clients_connected:
+        for client_thread, client_sock in self.clients_connected:
             client_sock.close()
             client_thread.join()
+
+
+class ClientHandler:
+    """Handles communication with employee clients"""
+
+    def __init__(self, server : SilentNetServer, client : client , mac : str):
+        self.server = server
+        self.client = client
+        self.mac = mac
+
+    def process_data(self):
+        """Process data received from employee client"""
+        print(f"\nEmployee connected: {self.client.get_ip()}")
+        
+        while self.server.proj_run:
+            try:
+                data = self.client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
+                
+                if data == b'ERR':
+                    continue
+                
+                if data == b'' or len(data) != 2:
+                    break
+
+                log_type, log_params = data[0], data[1]
+                log_type = log_type.decode()
+
+                if log_type in MessageParser.CLIENT_ALL_MSG:
+                    self.server.log_data_base.insert_data(self.client.get_address(), log_type, log_params)
+                else:
+                    self._handle_unsafe_message()
+            
+            except Exception as e:
+                print(f"Error from client {self.client.get_address()}: {e}")
+                print(traceback.format_exc())
+                self._handle_unsafe_message()
+
+        self._cleanup_disconnection()
+
+    def _handle_unsafe_message(self):
+        """Handle unsafe/invalid messages from client"""
+        disconnect = self.client.unsafe_msg_cnt_inc(self.server.safety)
+
+        if disconnect:
+            self.server.log_data_base.delete_mac_records_DB(self.mac)
+            self.server.uid_data_base.delete_mac(self.mac)
+            print("Disconnecting employee due to unsafe message count")
+            return True
+        return False
+
+    def _cleanup_disconnection(self):
+        """Clean up when client disconnects"""
+        if self.mac in self.server.macs_connected:
+            with self.server.clients_recv_lock:
+                self.server.macs_connected.remove(self.mac)
+        
+        print(f"\nEmployee disconnected: {self.client.get_ip()}")
+
+
+class ManagerHandler:
+    """Handles communication with manager clients"""
+
+    def __init__(self, server : SilentNetServer, client : str):
+        self.server = server
+        self.client = client
+
+    def process_requests(self):
+        """Process manager requests"""
+        print(f"\nManager connected: {self.client.get_ip()}")
+        
+        while self.server.proj_run:
+            try:
+                ret_msg = []
+                ret_msg_type = ""
+                manager_disconnect = False
+
+                data = self.client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+                if data == b'ERR':
+                    continue
+                
+                if data == b'':
+                    break
+
+                msg_type = data[0].decode()
+                msg_params = data[1] if len(data) > 1 else ""
+
+                if msg_type == MessageParser.MANAGER_SND_SETTINGS:
+                    self._handle_settings_update(msg_params)
+                elif msg_type == MessageParser.MANAGER_GET_CLIENTS:
+                    ret_msg, ret_msg_type = self._get_client_list()
+                elif msg_type == MessageParser.MANAGER_GET_CLIENT_DATA:
+                    ret_msg, ret_msg_type = self._get_client_data(msg_params)
+                elif msg_type == MessageParser.MANAGER_CHG_CLIENT_NAME:
+                    ret_msg_type = self._handle_name_change(msg_params)
+                elif msg_type == MessageParser.MANAGER_DELETE_CLIENT:
+                    self._delete_client(msg_params)
+                elif msg_type == MessageParser.MANAGER_MSG_EXIT:
+                    manager_disconnect = True
+                else:
+                    manager_disconnect = self._handle_unsafe_message()
+
+                if ret_msg_type:
+                    self.client.protocol_send(ret_msg_type, *ret_msg)
+                
+                if manager_disconnect:
+                    break
+            
+            except Exception as e:
+                print(f"Error from manager {self.client.get_ip()}: {e}")
+                print(traceback.format_exc())
+                if self._handle_unsafe_message():
+                    return
+
+        print(f"\nManager disconnected: {self.client.get_ip()}")
+
+    def _handle_settings_update(self, msg_params):
+        """Handle server settings update from manager"""
+        new_max_clients, new_safety = MessageParser.protocol_message_deconstruct(msg_params)
+        self.server.max_clients, self.server.safety = int(new_max_clients), int(new_safety)
+
+    def _get_client_list(self):
+        """Get list of all clients for manager"""
+        clients = self.server.uid_data_base.get_clients()
+        ret_msg = []
+
+        for mac, hostname in clients:
+            active_percent = self.server.log_data_base.get_active_precentage(mac)
+            is_connected = 1 if mac in self.server.macs_connected else 0
+            ret_msg.append(f"{hostname},{active_percent},{is_connected}")
+
+        return ret_msg, MessageParser.MANAGER_GET_CLIENTS
+
+    def _get_client_data(self, msg_params):
+        """Get detailed stats for a specific client"""
+        client_name = msg_params.decode()
+        return [self._get_employee_stats(client_name)], MessageParser.MANAGER_GET_CLIENTS
+
+    def _get_employee_stats(self, client_name):
+        """Generate statistics for a specific employee"""
+        mac_addr = self.server.uid_data_base.get_mac_by_hostname(client_name)
+        
+        process_cnt = self.server.log_data_base.get_process_count(mac_addr)
+        inactive_times, inactive_after_last = self.server.log_data_base.get_inactive_times(mac_addr)
+        words_per_min = int(self.server.log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
+
+        core_usage, cpu_usage = self.server.log_data_base.get_cpu_usage(mac_addr)
+        ip_cnt = self.server.log_data_base.get_reached_out_ips(mac_addr)
+
+        data = {
+            "processes": {
+                "labels": [i[0].decode() for i in process_cnt],
+                "data": [i[1] for i in process_cnt]
+            },
+            "inactivity": {
+                "labels": [i[0] for i in inactive_times],
+                "data": [int(i[1]) for i in inactive_times if len(i) == 2]
+            },
+            "wpm": words_per_min,
+            "cpu_usage": {
+                "labels": cpu_usage,
+                "data": {
+                    "cores": sorted(list(core_usage.keys())),
+                    "usage": [core_usage[core] for core in sorted(core_usage.keys())]
+                }
+            },
+            "ips": {
+                "labels": [i[0].decode() for i in ip_cnt],
+                "data": [i[1] for i in ip_cnt]
+            }
+        }
+        
+        return json.dumps(data)
+
+    def _handle_name_change(self, msg_params):
+        """Handle client name change request"""
+        prev_name, new_name = MessageParser.protocol_message_deconstruct(msg_params)
+        prev_name, new_name = prev_name.decode(), new_name.decode()
+
+        if not self.server.uid_data_base.check_user_existence(new_name):
+            self.server.uid_data_base.update_name(prev_name, new_name)
+            return MessageParser.MANAGER_VALID_CHG
+        else:
+            return MessageParser.MANAGER_INVALID_CHG
+
+    def _delete_client(self, msg_params):
+        """Handle client deletion request"""
+        client_name = msg_params.decode()
+        mac = self.server.uid_data_base.get_mac_by_hostname(client_name)
+        
+        self.server.log_data_base.delete_mac_records_DB(mac)
+        self.server.uid_data_base.delete_mac(mac)
+
+        if mac in self.server.macs_connected:
+            self.server.log_data_base.client_setup_db(mac)
+            self.server.uid_data_base.insert_data(mac, client_name)
+
+    def _handle_unsafe_message(self):
+        """Handle unsafe/invalid messages from manager"""
+        disconnect = self.client.unsafe_msg_cnt_inc(self.server.safety)
+        if disconnect:
+            print("Disconnecting manager due to unsafe message count")
+            return True
+        return False
+
+
+def main():
+    """Main entry point for the server"""
+    server = SilentNetServer()
+    server.start()
+
 
 if __name__ == "__main__":
     main()
