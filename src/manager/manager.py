@@ -29,10 +29,10 @@ class SilentNetManager:
 
     def __init__(self):
         """Initialize the manager application"""
-        self.app = Flask(__name__)
-        self.manager_socket = None
-        self.is_connected = False
-        self.screens = {
+        self.app : webbrowser = Flask(__name__)
+        self.manager_socket : bool = None
+        self.is_connected : bool = False
+        self.screens : dict = {
             "/exit": 0,
             "/loading": 1,
             "/": 2,
@@ -40,8 +40,8 @@ class SilentNetManager:
             "/employees": 4,
             "/stats_screen": 5,
         }
-        self.current_screen = "/"
-        self.previous_screen = None
+        self.current_screen : str = "/"
+        self.previous_screen : str = ""
         
         self._setup_routes()
         self._setup_error_handlers()
