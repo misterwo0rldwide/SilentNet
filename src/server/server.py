@@ -136,11 +136,7 @@ class SilentNetServer:
         print('Server shutting down')
 
     def _handle_client_connection(self, client : client):
-        """
-        Determine client type and route to appropriate handler
-        
-        
-        """
+        """Determine client type and route to appropriate handler"""
         data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
         if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
             self._remove_disconnected_client(client)
@@ -162,17 +158,7 @@ class SilentNetServer:
         self._remove_disconnected_client(client)
 
     def _determine_client_type(self, client, msg_type, msg):
-        """
-        Determine if client is manager or employee and handle accordingly
-        
-        Args:
-            client: Protocol client object
-            msg_type: Type of message received
-            msg: Message content
-            
-        Returns:
-            bool: True if client was a manager, False otherwise
-        """
+        """Determine if client is manager or employee and handle accordingly"""
         if msg_type == MessageParser.MANAGER_MSG_PASSWORD:
             return self._handle_manager_connection(client, msg)
         elif msg_type == MessageParser.CLIENT_MSG_AUTH:
@@ -180,16 +166,7 @@ class SilentNetServer:
         return False
 
     def _handle_manager_connection(self, client, msg):
-        """
-        Handle manager authentication and connection
-        
-        Args:
-            client: Protocol client object
-            msg: Password message
-            
-        Returns:
-            bool: Always returns True (manager connection handled)
-        """
+        """Handle manager authentication and connection"""
         ret_msg_type = MessageParser.MANAGER_INVALID_CONN
         client.exchange_keys()
         msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
@@ -210,13 +187,7 @@ class SilentNetServer:
         return True
 
     def _handle_employee_connection(self, client, msg):
-        """
-        Handle employee authentication and connection
-        
-        Args:
-            client: Protocol client object
-            msg: Authentication message
-        """
+        """Handle employee authentication and connection"""
         mac, hostname = MessageParser.protocol_message_deconstruct(msg)
         mac, hostname = mac.decode(), hostname.decode()
         
@@ -232,12 +203,7 @@ class SilentNetServer:
         ClientHandler(self, client, mac).process_data()
 
     def _remove_disconnected_client(self, client):
-        """
-        Remove disconnected client from connected clients list
-        
-        Args:
-            client: Protocol client object to remove
-        """
+        """Remove disconnected client from connected clients list"""
         if not client:
             return
         
