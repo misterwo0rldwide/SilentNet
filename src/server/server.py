@@ -123,8 +123,9 @@ class SilentNetServer:
                     
                     client_thread.start()
                     
-                    if len(self.clients_connected) >= self.max_clients:
-                        self.clients_recv_event.clear()
+                    with self.clients_recv_lock:
+                        if len(self.clients_connected) >= self.max_clients:
+                            self.clients_recv_event.clear()
                 else:
                     self.clients_recv_event.wait()
             except timeout:
@@ -218,8 +219,9 @@ class SilentNetServer:
         client.close()
         client = None
 
-        if len(self.clients_connected) + 1 == self.max_clients:
-            self.clients_recv_event.set()
+        with self.clients_recv_lock:
+            if len(self.clients_connected) + 1 == self.max_clients:
+                self.clients_recv_event.set()
 
     def erase_all_logs(self):
         """Erase all logs from the database"""
@@ -357,12 +359,22 @@ class ManagerHandler:
                 if self._handle_unsafe_message():
                     return
 
+        # Return to default settings
+        self.server.max_clients = 5
+        self.server.safety = 5
+        
         print(f"\nManager disconnected: {self.client.get_ip()}")
 
     def _handle_settings_update(self, msg_params):
         """Handle server settings update from manager"""
         new_max_clients, new_safety = MessageParser.protocol_message_deconstruct(msg_params)
         self.server.max_clients, self.server.safety = int(new_max_clients), int(new_safety)
+
+        with self.server.clients_recv_lock:
+            if len(self.server.clients_connected) >= self.server.max_clients:
+                self.server.clients_recv_event.clear()
+            else:
+                self.server.clients_recv_event.set()
 
     def _get_client_list(self):
         """Get list of all clients for manager"""
