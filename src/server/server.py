@@ -240,12 +240,12 @@ class SilentNetServer:
     def _cleanup(self):
         """Clean up server resources before shutdown"""
         self.server_comm.close()
-        DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
-        DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
-        
         for client_thread, client_sock in self.clients_connected:
             client_sock.close()
             client_thread.join()
+        
+        DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
+        DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
 
 
 class ClientHandler:
