@@ -13,6 +13,7 @@ import webbrowser
 import os
 import signal
 import json
+from sys import argv
 from functools import wraps
 from flask import Flask, redirect, render_template, request, jsonify, url_for
 
@@ -21,8 +22,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shar
 from protocol import *
 from encryption import *
 
-__author__ = "Omer Kfir"
-
+__author__ : str = "Omer Kfir"
+server_ip : str = "127.0.0.1"
 
 class SilentNetManager:
     """Main manager application class that encapsulates all Flask routes and server communication"""
@@ -78,8 +79,8 @@ class SilentNetManager:
                 return f(*args, **kwargs)
             
             # Allow access to employees screen if current screen is higher in hierarchy
-            elif (request.path == "/employees" and 
-                  self.screens[self.current_screen] > self.screens[request.path]):
+            elif ((request.path == "/employees" and 
+                  self.screens[self.current_screen] > self.screens[request.path]) or (request.path == "/settings" and self.current_screen == "/employees")):
                 self.previous_screen = self.current_screen
                 self.current_screen = request.path
                 return f(*args, **kwargs)
@@ -238,7 +239,7 @@ class SilentNetManager:
     def connect_to_server(self):
         """Attempt to connect to the server"""
         self.manager_socket = client(manager=True)
-        self.is_connected = self.manager_socket.connect("127.0.0.1", server.SERVER_BIND_PORT)
+        self.is_connected = self.manager_socket.connect(server_ip, server.SERVER_BIND_PORT)
         
         if not self.is_connected:
             return render_template("loading_screen.html")
@@ -254,8 +255,24 @@ class SilentNetManager:
 
 def main():
     """Entry point for the manager application"""
-    manager = SilentNetManager()
-    manager.run()
+    global server_ip
+    if len(argv) != 2:
+        print("Wrong Usage: python manager.py <server_ip>")
+    
+    else:
+        ip = argv[1].split(".")
+        if len(ip) != 4:
+            print("IP not valid - ipv4 consists 4 numbers")
+            return
+            
+        for n in ip:
+            if (not n.isnumeric()) or (int(n) < 0 or int(n) > 255):
+                print("IP not valid - ip numbers are no valid")
+                return
+                
+        server_ip = ".".join(ip)
+        manager = SilentNetManager()
+        manager.run()
 
 
 if __name__ == "__main__":

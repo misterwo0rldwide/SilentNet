@@ -1,3 +1,9 @@
+/*
+ * hide_tcp_sock.h - header file for hide_tcp_sock.c
+ *
+ * Omer Kfir (C)
+ */
+
 #ifndef HIDE_TCP_SOCK_H
 #define HIDE_TCP_SOCK_H
 

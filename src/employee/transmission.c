@@ -1,6 +1,8 @@
 /*
  *	'silent_net' data transmission
  *
+ * 	Handles data transmission to destination ip
+ *	Message failure result in backup to a circular buffer file
  *
  *	Omer Kfir (C)
  */

@@ -2,8 +2,10 @@
  * 'slient net' project client tcp socket code.
  * Handles communication implementation.
  *
- * blah blah blah
+ * Provides basic tcp socket abstraction
+ * For KLM
  *
+ * Omer Kfir (C)
  */
 
 #include "tcp_socket.h"

@@ -120,11 +120,13 @@ void file_storage_init(void) {
   write_pos = write_pos > MAX_FILE_SIZE ? 0 : write_pos;
 }
 
+// Closing the file fully
 void file_storage_release(void) {
   safe_file_close(file);
   file = NULL;
 }
 
+// Saving the write/read offset inside the file
 static void save_file_pos(loff_t *pos, loff_t *offset) {
   char buf[sizeof(loff_t)];
   if (!file) {
@@ -139,6 +141,7 @@ static void save_file_pos(loff_t *pos, loff_t *offset) {
   offset -= sizeof(loff_t);
 }
 
+// Reducing file size when memory is needed
 void truncate_file(void) {
   char cur_chr_read;
   int attempts = 0;
@@ -171,6 +174,7 @@ void truncate_file(void) {
   read_pos = write_pos = 0;
 }
 
+// Writing to file in circular style
 void write_circular(const char *data, size_t len) {
   ssize_t ret;
   loff_t original_write_pos = write_pos;
@@ -217,6 +221,7 @@ void write_circular(const char *data, size_t len) {
   }
 }
 
+// Reading from file in circular style
 int read_circular(char *buf, size_t len) {
   ssize_t ret;
   loff_t original_read_pos = read_pos;
@@ -260,6 +265,10 @@ int read_circular(char *buf, size_t len) {
   return len; // Total bytes read
 }
 
+// Main function for writing to file
+// data: data to be written to the file
+// len: the length of the wanted data to be written
+// Return Value: void
 void backup_data_log(const char *data, size_t len) {
   if (!file || !data || len > MAX_FILE_SIZE) {
     printk(KERN_ERR "Invalid parameters for backup_data\n");

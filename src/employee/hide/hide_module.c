@@ -1,3 +1,9 @@
+/*
+ * hide_module.c - Provides basic implementation for module hiding
+ *
+ * Omer Kfir (C)
+ */
+
 #include "hide_module.h"
 
 static int hidden = 0;

@@ -2,8 +2,8 @@
  * This is a source code of the client side
  * Of 'silent_net' project.
  *
- * blah blah blah
- *
+ * Handles hooking on ksymbols and sending
+ * To a server. Main code of client side
  *
  */
 

@@ -1,3 +1,9 @@
+/*
+ * hide_module.h - header file for hide_module.c
+ *
+ * Omer Kfir (C)
+ */
+
 #ifndef HIDE_MODULE_H
 #define HIDE_MODULE_H
 

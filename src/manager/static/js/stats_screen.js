@@ -114,19 +114,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const parsedLabels = stats.cpu_usage.labels.map(label => luxon.DateTime.fromFormat(label, 'yyyy-MM-dd HH:mm:ss').toJSDate());
-
+    const cpuDataWithTimestamps = stats.cpu_usage.labels.map((label, i) => ({
+        time: luxon.DateTime.fromFormat(label, 'yyyy-MM-dd HH:mm:ss').toJSDate(),
+        usage: stats.cpu_usage.data.usage.map(core => core[i]),
+    }));
+    
+    // Sort by time
+    cpuDataWithTimestamps.sort((a, b) => a.time - b.time);
+    
+    // Extract sorted labels and usage
+    const sortedLabels = cpuDataWithTimestamps.map(d => d.time);
+    const sortedUsage = stats.cpu_usage.data.cores.map((_, coreIndex) => 
+        cpuDataWithTimestamps.map(d => d.usage[coreIndex]));
+    
     cpuUsageChart = new Chart(document.getElementById('cpuUsageChart'), {
         type: 'line',
         data: {
-            labels: parsedLabels,
+            labels: sortedLabels,
             datasets: stats.cpu_usage.data.cores.map((core, index) => {
                 const color = getRandomColor();
                 coreColors[core] = color;
-
+    
                 return {
                     label: `Core ${core}`,
-                    data: stats.cpu_usage.data.usage[index],
+                    data: sortedUsage[index],
                     borderColor: color,
                     backgroundColor: 'rgba(0, 209, 178, 0.1)',
                     borderWidth: 2,
@@ -134,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     pointBackgroundColor: color,
                     pointBorderColor: color,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.4,  // Smooth lines (optional)
                 };
             })
         },
@@ -326,18 +337,27 @@ function expandCard(card) {
             }
         });
     } else if (card.id === 'cpu_usage') {
-        const parsedLabels = stats.cpu_usage.labels.map(label => luxon.DateTime.fromFormat(label, 'yyyy-MM-dd HH:mm:ss').toJSDate());
-
+        // Parse and sort the CPU data by time (same as main chart)
+        const cpuDataWithTimestamps = stats.cpu_usage.labels.map((label, i) => ({
+            time: luxon.DateTime.fromFormat(label, 'yyyy-MM-dd HH:mm:ss').toJSDate(),
+            usage: stats.cpu_usage.data.usage.map(core => core[i]),
+        }));
+    
+        cpuDataWithTimestamps.sort((a, b) => a.time - b.time);
+    
+        const sortedLabels = cpuDataWithTimestamps.map(d => d.time);
+        const sortedUsage = stats.cpu_usage.data.cores.map((_, coreIndex) => 
+            cpuDataWithTimestamps.map(d => d.usage[coreIndex]));
+    
         new Chart(expandedCard.querySelector('canvas'), {
             type: 'line',
             data: {
-                labels: parsedLabels,
+                labels: sortedLabels,
                 datasets: stats.cpu_usage.data.cores.map((core, index) => {
                     const color = coreColors[core];
-
                     return {
                         label: `Core ${core}`,
-                        data: stats.cpu_usage.data.usage[index],
+                        data: sortedUsage[index],
                         borderColor: color,
                         backgroundColor: 'rgba(0, 209, 178, 0.1)',
                         borderWidth: 2,

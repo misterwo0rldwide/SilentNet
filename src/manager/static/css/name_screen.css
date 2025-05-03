@@ -186,10 +186,35 @@ body::before {
     opacity: 0.6;
 }
 
-/* Adjust button text alignment */
+
 .button {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     padding-left: 15px;
+}
+
+.settings-btn {
+    display: inline-block;
+    margin: 20px 10px;
+    padding: 12px 25px;
+    font-size: 18px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.settings-btn:hover {
+    background-color: #5a6268;
+    transform: translateY(-3px);
+}
+
+.settings-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

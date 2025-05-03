@@ -1,6 +1,7 @@
 /*
  *	'silent net' work queue handling
  *
+ *	Basic abstraction for data set workqueue
  *	Omer Kfir (C)
  */
 
