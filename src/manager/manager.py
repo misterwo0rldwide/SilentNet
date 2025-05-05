@@ -20,7 +20,6 @@ from flask import Flask, redirect, render_template, request, jsonify, url_for
 # Append parent directory to be able to import protocol
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shared')))
 from protocol import *
-from encryption import *
 
 __author__ : str = "Omer Kfir"
 server_ip : str = "127.0.0.1"

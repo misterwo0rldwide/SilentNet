@@ -21,7 +21,6 @@ import traceback
 path = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(path, '../shared')))
 
-from encryption import *
 from protocol import *
 from DB import *
 
