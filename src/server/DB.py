@@ -17,6 +17,8 @@ class DBHandler():
 
     DB_NAME = "server_db.db"
     
+    _lock : threading.Lock = threading.RLock()
+    
     def __init__(self, conn, cursor, table_name: str):
         """
         Initialize database connection using an existing connection and cursor.
@@ -30,8 +32,7 @@ class DBHandler():
         """
         self.conn = conn
         self.cursor = cursor
-        self.table_name = table_name
-        self._lock = threading.Lock()
+        self.table_name : str = table_name
 
         # Create tables if they do not exist
         if table_name.endswith("logs"):
@@ -110,12 +111,14 @@ class DBHandler():
             @command: SQL command to execute
             @command_args: Arguments for the command
         """
-        if not self.conn or not self.cursor:
-            raise ValueError("Database connection not established")
-
+        
         ret_data = ""
+        
+        with DBHandler._lock:
+        
+            if not self.conn or not self.cursor:
+                raise ValueError("Database connection not established")
 
-        with self._lock:
             try:
                 self.cursor.execute(command, command_args)
                 ret_data = self.cursor.fetchall()
@@ -143,14 +146,20 @@ class UserLogsORM (DBHandler):
         """
             Ensure singleton instance and initialize with existing connection and cursor.
 
-            INPUT: conn, cursor, table_name
+            INPUT: cls
             OUTPUT: None
         """
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(UserLogsORM, cls).__new__(cls)
-                cls._instance.__init__(conn, cursor, table_name)
             return cls._instance
+    
+    def __init__(self, conn, cursor, table_name: str):
+        """
+        Initialize the instance, but only once.
+        """
+        if not hasattr(self, 'conn') or self.conn is None:
+            super().__init__(conn, cursor, table_name)
     
     def client_setup_db(self, mac : str) -> None:
         """
@@ -480,8 +489,14 @@ class UserId (DBHandler):
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(UserId, cls).__new__(cls)
-                cls._instance.__init__(conn, cursor, table_name)
             return cls._instance
+    
+    def __init__(self, conn, cursor, table_name: str):
+        """
+        Initialize the instance, but only once.
+        """
+        if not hasattr(self, 'conn') or self.conn is None:
+            super().__init__(conn, cursor, table_name)
     
     def delete_mac(self, mac : str) -> None:
         """

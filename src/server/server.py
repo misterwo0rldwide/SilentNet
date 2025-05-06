@@ -58,6 +58,8 @@ class SilentNetServer:
         self._setup_keyboard_shortcuts()
         self._run_server()
 
+        print("Server shutting down...")
+
     def _load_configuration(self):
         """Load server configuration from command line or use defaults"""
         if len(sys.argv) == 4:
@@ -129,11 +131,13 @@ class SilentNetServer:
                     self.clients_recv_event.wait()
             except timeout:
                 pass
+            except OSError:
+                print("\nServer socket closed")
+                break
             except Exception as e:
                 print(f"Error accepting client: {e}")
                 print(traceback.format_exc())
-
-        print('Server shutting down')
+            
 
     def _handle_client_connection(self, client : client):
         """Determine client type and route to appropriate handler"""
@@ -234,17 +238,24 @@ class SilentNetServer:
 
     def quit_server(self):
         """Shut down the server gracefully"""
+        self.server_comm.close()
         self.proj_run = False
 
     def _cleanup(self):
         """Clean up server resources before shutdown"""
-        self.server_comm.close()
-        for client_thread, client_sock in self.clients_connected:
-            client_sock.close()
+
+        # Employees remove themselves from the list when they disconnect
+        # So we need to copy the initial list to avoid race conditions
+        clients = self.clients_connected[::]
+        for client_thread, client_sock in clients:
             client_thread.join()
-        
+            client_sock.close()
+
         DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
         DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
+        
+        self.log_data_base.conn, self.log_data_base.cursor = None, None
+        self.uid_data_base.conn, self.uid_data_base.cursor = None, None
 
 
 class ClientHandler:
@@ -297,6 +308,9 @@ class ClientHandler:
 
     def _cleanup_disconnection(self):
         """Clean up when client disconnects"""
+
+        # Remove from list of currently connected macs
+        # In order to sign to manager that the client is not connected anymore
         if self.mac in self.server.macs_connected:
             with self.server.clients_recv_lock:
                 self.server.macs_connected.remove(self.mac)
@@ -444,12 +458,14 @@ class ManagerHandler:
         client_name = msg_params.decode()
         mac = self.server.uid_data_base.get_mac_by_hostname(client_name)
         
-        self.server.log_data_base.delete_mac_records_DB(mac)
-        self.server.uid_data_base.delete_mac(mac)
+        with DBHandler._lock:
+        
+            self.server.log_data_base.delete_mac_records_DB(mac)
+            self.server.uid_data_base.delete_mac(mac)
 
-        if mac in self.server.macs_connected:
-            self.server.log_data_base.client_setup_db(mac)
-            self.server.uid_data_base.insert_data(mac, client_name)
+            if mac in self.server.macs_connected:
+                self.server.log_data_base.client_setup_db(mac)
+                self.server.uid_data_base.insert_data(mac, client_name)
 
     def _handle_unsafe_message(self):
         """Handle unsafe/invalid messages from manager"""
