@@ -408,7 +408,7 @@ class client (TCPsocket):
             
             self.__encryption.generate_shared_secret(int(data))
             return True
-        except ConnectionResetError, ValueError as e:
+        except (ConnectionResetError, ValueError) as e:
             return False
         except Exception as e:
             # If raised exception then return that function did not manage to complete successfully

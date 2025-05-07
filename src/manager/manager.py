@@ -179,8 +179,11 @@ class SilentNetManager:
     def employees_screen(self):
         """Render employee list screen"""
         self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
-        clients = self.manager_socket.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX:]
-
+        clients = self.manager_socket.protocol_recv()
+        if clients == b"":
+            return redirect(url_for("loading_screen"))
+        
+        clients = clients[MessageParser.PROTOCOL_DATA_INDEX:]
         stats = []
         for client in clients:
             name, active, connected = client.decode().split(",")
@@ -232,7 +235,11 @@ class SilentNetManager:
         client_name = request.args.get('client_name')
         self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
 
-        stats = json.loads(self.manager_socket.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX])
+        stats = self.manager_socket.protocol_recv()
+        if stats == b"":
+            return redirect(url_for("loading_screen"))
+        
+        stats = json.loads(stats[MessageParser.PROTOCOL_DATA_INDEX])
         return render_template("stats_screen.html", stats=stats, client_name=client_name)
 
     def connect_to_server(self):
