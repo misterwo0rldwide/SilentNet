@@ -45,6 +45,7 @@ class SilentNetServer:
         self.manager_connected : bool = False
         self.clients_connected : list[threading.Thread, client] = []  # List of (thread object, client object)
         self.macs_connected : list[str] = []  # List of MAC addresses of connected clients
+        self.macs_lock : threading.Lock = threading.Lock()
         self.clients_recv_event : threading.Event = threading.Event()
         self.clients_recv_lock : threading.Lock = threading.Lock()
         self.log_data_base : UserLogsORM = None
@@ -196,7 +197,7 @@ class SilentNetServer:
         mac, hostname = MessageParser.protocol_message_deconstruct(msg)
         mac, hostname = mac.decode(), hostname.decode()
         
-        with self.clients_recv_lock:
+        with self.macs_lock:
             self.macs_connected.append(mac)
         
         client.set_address(mac)
@@ -245,12 +246,10 @@ class SilentNetServer:
     def _cleanup(self):
         """Clean up server resources before shutdown"""
 
-        # Copy value of clients connected in order for the list to not
-        # Be changed during runtime by another thread
-        clients = self.clients_connected[::]
-        for client_thread, client_sock in clients:
-            client_thread.join()
-            client_sock.close()
+        with self.clients_recv_lock:
+            for client_thread, client_sock in self.clients_connected:
+                client_thread.join()
+                client_sock.close()
 
         DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
         DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
@@ -312,7 +311,7 @@ class ClientHandler:
 
         # Remove from list of currently connected macs
         # In order to sign to manager that the client is not connected anymore
-        if self.mac in self.server.macs_connected:
+        if self.server.proj_run and self.mac in self.server.macs_lock:
             with self.server.clients_recv_lock:
                 self.server.macs_connected.remove(self.mac)
         
