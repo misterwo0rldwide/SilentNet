@@ -142,7 +142,7 @@ class SilentNetServer:
 
     def _handle_client_connection(self, client : client):
         """Determine client type and route to appropriate handler"""
-        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
+        data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False, decompress=False)
         if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
             self._remove_disconnected_client(client)
             return
@@ -225,8 +225,9 @@ class SilentNetServer:
         client = None
 
         with self.clients_recv_lock:
-            if len(self.clients_connected) + 1 == self.max_clients:
+            if len(self.clients_connected) < self.max_clients:
                 self.clients_recv_event.set()
+        
 
     def erase_all_logs(self):
         """Erase all logs from the database"""
@@ -272,7 +273,7 @@ class ClientHandler:
         
         while self.server.proj_run:
             try:
-                data = self.client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False)
+                data = self.client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False, decompress=False)
                 
                 if data == b'ERR':
                     continue

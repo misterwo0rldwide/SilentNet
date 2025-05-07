@@ -10,6 +10,8 @@ import socket
 from encryption import EncryptionHandler
 from typing import Optional, Tuple, Union
 from random import randint
+import zlib
+import traceback
 
 __author__ = "Omer Kfir"
 
@@ -391,17 +393,26 @@ class client (TCPsocket):
                 self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
             else:
                 # If client is a server object
-                data = self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX:]
+                data_type, data = self.protocol_recv(1, decrypt=False)
+                if data_type.decode() != MessageParser.ENCRYPTION_EXCHANGE:
+                    return False
+                
+                data = MessageParser.protocol_message_deconstruct(data, 1)
                 self.__encryption = EncryptionHandler(int(data[0]), int(data[1]))
 
             self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
-            self.__encryption.generate_shared_secret(int(self.protocol_recv(decrypt=False)[MessageParser.PROTOCOL_DATA_INDEX]))
-
+            
+            data_type, data = self.protocol_recv(1, decrypt=False)
+            if data_type.decode() != MessageParser.ENCRYPTION_EXCHANGE:
+                return False
+            
+            self.__encryption.generate_shared_secret(int(data))
             return True
-        
+        except ConnectionResetError, ValueError as e:
+            return False
         except Exception as e:
             # If raised exception then return that function did not manage to complete successfully
-            print(e)
+            print(traceback.format_exc())
             return False
 
     def connect(self, dst_ip : str, dst_port : int) -> bool:
@@ -425,7 +436,7 @@ class client (TCPsocket):
 
             return False
     
-    def protocol_recv(self, part_split : int = -1, decrypt: bool = True) -> list[bytes]:
+    def protocol_recv(self, part_split : int = -1, decrypt: bool = True, decompress : bool = True) -> list[bytes]:
         """
             Recevies data from connected side and splits it by protocol
             
@@ -433,6 +444,8 @@ class client (TCPsocket):
             OUTPUT: List of byte streams
 
             @part_split -> Number of fields to seperate from start of message
+            @decrypt -> Boolean to sign if to decrypt
+            @decompress -> Boolean to sign if to decompress data
         """
         try:
             data = self.recv()
@@ -442,6 +455,9 @@ class client (TCPsocket):
             if decrypt:
                 data = self.__encryption.decrypt(data)
 
+            if decompress:
+                data = zlib.decompress(data)
+            
             data = MessageParser.protocol_message_deconstruct(data, part_split)
             return data
         
@@ -451,18 +467,24 @@ class client (TCPsocket):
         except Exception:
             return b''
         
-    def protocol_send(self, msg_type, *args, encrypt: bool = True) -> None:
+    def protocol_send(self, msg_type, *args, encrypt: bool = True, compress : bool = True) -> None:
         """
-            Sends a message constructed by protocll
+            Sends a message constructed by protocl
             
             INPUT: msg_type, *args (Uknown amount of arguments)
             OUTPUT: None
             
             @msg_type -> Message type of the message to be sent
             @args -> The rest of the data to be sent in the message
+            @encrypt -> Boolean to indicate if to encrypt
+            @compress -> Boolean to indicate if to compress
         """
 
         constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
+        
+        if compress:
+            constr_msg = zlib.compress(constr_msg)
+        
         if encrypt:
             constr_msg = self.__encryption.encrypt(constr_msg)
         

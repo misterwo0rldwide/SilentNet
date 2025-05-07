@@ -137,13 +137,13 @@ class SilentNetManager:
                 return redirect(url_for("loading_screen"))
         
         try:
-            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False)
+            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False, compress=False)
         except Exception:
             self.connect_to_server()
             if not self.is_connected:
                 return redirect(url_for("loading_screen"))
             
-            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False)
+            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False, compress=False)
 
         if not self.manager_socket.exchange_keys():
             return redirect(url_for("loading_screen"))
@@ -205,7 +205,7 @@ class SilentNetManager:
         current_state = self.is_connected
 
         if self.is_connected:
-            self.manager_socket.protocol_send(MessageParser.MANAGER_CHECK_CONNECTION, encrypt=False)
+            self.manager_socket.protocol_send(MessageParser.MANAGER_CHECK_CONNECTION, encrypt=False, compress=False)
             self.disconnect()
 
         return jsonify({"status": current_state})

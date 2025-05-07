@@ -39,7 +39,7 @@ class DiffieHellman:
         if self.prime == 0 or self.base == 0:
             parameters = dh.generate_parameters(generator=2, key_size=512)
             self.prime = parameters.parameter_numbers().p
-            self.generator = parameters.parameter_numbers().g
+            self.base = parameters.parameter_numbers().g
             
         self.private_key = self._generate_private_key()
 
