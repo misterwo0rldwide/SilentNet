@@ -159,7 +159,8 @@ class SilentNetServer:
         if self._determine_client_type(client, msg_type, data[1] if len(data) > 1 else b''):
             self.manager_connected = False
 
-        self._remove_disconnected_client(client)
+        if self.proj_run:
+            self._remove_disconnected_client(client)
 
     def _determine_client_type(self, client, msg_type, msg):
         """Determine if client is manager or employee and handle accordingly"""
@@ -244,8 +245,8 @@ class SilentNetServer:
     def _cleanup(self):
         """Clean up server resources before shutdown"""
 
-        # Employees remove themselves from the list when they disconnect
-        # So we need to copy the initial list to avoid race conditions
+        # Copy value of clients connected in order for the list to not
+        # Be changed during runtime by another thread
         clients = self.clients_connected[::]
         for client_thread, client_sock in clients:
             client_thread.join()
