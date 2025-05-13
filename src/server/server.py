@@ -312,8 +312,8 @@ class ClientHandler:
 
         # Remove from list of currently connected macs
         # In order to sign to manager that the client is not connected anymore
-        if self.server.proj_run and self.mac in self.server.macs_lock:
-            with self.server.clients_recv_lock:
+        if self.server.proj_run and self.mac in self.server.macs_connected:
+            with self.server.macs_lock:
                 self.server.macs_connected.remove(self.mac)
         
         print(f"\nEmployee disconnected: {self.client.get_ip()}")
@@ -420,7 +420,7 @@ class ManagerHandler:
 
         data = {
             "processes": {
-                "labels": [i[0].decode() for i in process_cnt],
+                "labels": [i[0] for i in process_cnt],
                 "data": [i[1] for i in process_cnt]
             },
             "inactivity": {

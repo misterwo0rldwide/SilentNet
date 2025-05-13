@@ -7,6 +7,7 @@ from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shared')))
 from protocol import MessageParser
+from filter import process_filter
 
 __author__ = "Omer Kfir"
 
@@ -44,13 +45,16 @@ class DBHandler():
                 count NUMERIC NOT NULL DEFAULT 1
             )
             ''')
+            self.commit('CREATE INDEX IF NOT EXISTS idx_logs_mac_type ON logs(mac, type)')
         elif table_name.endswith("uid"):
             self.commit('''
             CREATE TABLE IF NOT EXISTS uid (
                 mac TEXT NOT NULL UNIQUE,
-                hostname TEXT NOT NULL UNIQUE
+                hostname TEXT NOT NULL UNIQUE,
+                PRIMARY KEY(mac)
             )
             ''')
+            self.commit('CREATE INDEX IF NOT EXISTS idx_uid_hostname ON uid(hostname)')
 
     @staticmethod
     def connect_DB(db_name : str) -> tuple:
@@ -315,6 +319,13 @@ class UserLogsORM (DBHandler):
         if data_type == MessageParser.CLIENT_CPU_USAGE:
             self.__update_cpu_usage(mac, data)
             return
+        
+        # Ignore process which are usually not used by the user
+        if data_type == MessageParser.CLIENT_PROCESS_OPEN:
+            data = data.decode()
+            if data in process_filter.ignored_processes:
+                print("here", data)
+                return
 
         command = f"SELECT count FROM {self.table_name} WHERE mac = ? AND type = ? AND data = ?;"
         count = self.commit(command, mac, data_type, data)
