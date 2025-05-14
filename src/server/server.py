@@ -101,7 +101,7 @@ class SilentNetServer:
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for server control"""
         on_press_key('q', lambda _: self.quit_server())
-        on_press_key('e', lambda _: self.erase_all_logs())
+        #on_press_key('e', lambda _: self.erase_all_logs())
 
     def _run_server(self):
         """Main server loop to accept and handle client connections"""
@@ -231,11 +231,12 @@ class SilentNetServer:
 
     def erase_all_logs(self):
         """Erase all logs from the database"""
-        self.log_data_base.delete_all_records_DB()
-        clients = self.uid_data_base.get_clients()
+        with DBHandler._lock:
+            self.log_data_base.delete_all_records_DB()
+            clients = self.uid_data_base.get_clients()
 
-        for mac, _ in clients:
-            self.log_data_base.client_setup_db(mac)
+            for mac, _ in clients:
+                self.log_data_base.client_setup_db(mac)
         
         print("\nErased all logs")
 
@@ -248,9 +249,8 @@ class SilentNetServer:
         """Clean up server resources before shutdown"""
 
         with self.clients_recv_lock:
-            for client_thread, client_sock in self.clients_connected:
+            for client_thread, _ in self.clients_connected:
                 client_thread.join()
-                client_sock.close()
 
         DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
         DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
@@ -309,6 +309,8 @@ class ClientHandler:
 
     def _cleanup_disconnection(self):
         """Clean up when client disconnects"""
+        
+        self.client.close()
 
         # Remove from list of currently connected macs
         # In order to sign to manager that the client is not connected anymore

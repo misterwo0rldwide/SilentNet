@@ -32,7 +32,7 @@ ignored_processes = {
     "gvfs-afc-volume-monitor", "gvfs-goa-volume-monitor",
 
     # Accessibility and session helpers
-    "at-spi-bus-launcher", "at-spi2-registryd", "brltty", "gpg-agent",
+    "at-spi-bus-launcher", "at-spi2-registryd", "brltty", "gpg-agent", "gpgv", "gpgconf", 
     "seahorse", "evolution-addressbook-factory", "evolution-calendar-factory",
 
     # Snap/Flatpak/sandboxing
@@ -55,6 +55,7 @@ ignored_processes = {
     "Web Content", "RDD Process", "Socket Process", "Privileged Cont",
     "Utility Process", "Sandbox", "Isolated Web Co", "Forked",
     "plugin-cont", "WebExtensions", "Sandbox Forked", "WebKitNetworkPr", "WebKitWebProces",
+    "apt-key", "apt-config", 
 
     # Snap-related
     "snap", "snapd", "snap-exec", "snap-confine", "snap-rev", "snap-update",

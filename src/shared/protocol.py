@@ -207,7 +207,8 @@ class TCPsocket:
             INPUT: None
             OUTPUT: None
         """
-        
+
+
         self.__sock.close()
 
     def log(self, prefix : str, data: Union[bytes, str], max_to_print: int=DEBUG_PRINT_LEN) -> None:

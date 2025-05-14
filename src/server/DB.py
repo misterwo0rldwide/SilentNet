@@ -39,20 +39,20 @@ class DBHandler():
         if table_name.endswith("logs"):
             self.commit('''
             CREATE TABLE IF NOT EXISTS logs (
-                mac TEXT NOT NULL,
+                uid_id INTEGER NOT NULL,
                 type TEXT NOT NULL,
                 data BLOB NOT NULL,
-                count NUMERIC NOT NULL DEFAULT 1
-            )
+                count NUMERIC NOT NULL DEFAULT 1,
+            );
             ''')
-            self.commit('CREATE INDEX IF NOT EXISTS idx_logs_mac_type ON logs(mac, type)')
+            self.commit('CREATE INDEX IF NOT EXISTS idx_logs_uid_type ON logs(uid_id, type);')
         elif table_name.endswith("uid"):
             self.commit('''
             CREATE TABLE IF NOT EXISTS uid (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 mac TEXT NOT NULL UNIQUE,
-                hostname TEXT NOT NULL UNIQUE,
-                PRIMARY KEY(mac)
-            )
+                hostname TEXT NOT NULL UNIQUE
+            );
             ''')
             self.commit('CREATE INDEX IF NOT EXISTS idx_uid_hostname ON uid(hostname)')
 
@@ -292,7 +292,7 @@ class UserLogsORM (DBHandler):
             @mac: MAC address of user's computer
             @data: Bytes of data
         """
-
+        print(data)
         command = f"SELECT data FROM {self.table_name} WHERE mac = ? AND type = ?;"
         cpu_logs = self.commit(command, mac, MessageParser.CLIENT_CPU_USAGE)[0][0]
         
@@ -324,7 +324,6 @@ class UserLogsORM (DBHandler):
         if data_type == MessageParser.CLIENT_PROCESS_OPEN:
             data = data.decode()
             if data in process_filter.ignored_processes:
-                print("here", data)
                 return
 
         command = f"SELECT count FROM {self.table_name} WHERE mac = ? AND type = ? AND data = ?;"
@@ -537,11 +536,11 @@ class UserId (DBHandler):
             @hostname: User's computer hostname
         """
 
-        command = f"SELECT hostname FROM {self.table_name} WHERE mac = ?;"
-        output = self.commit(command, mac)
+        command = f"SELECT hostname FROM {self.table_name} WHERE mac = ? AND hostname = ?;"
+        output = self.commit(command, mac, hostname)
 
         if output:
-            print(f"\n{mac} -> Have already logged in before")
+            print(f"\n{mac}, hostname: {hostname} -> Have already logged in before")
             return True
 
         # Fetch all hostnames starting with the given hostname
@@ -555,7 +554,6 @@ class UserId (DBHandler):
             while f"{hostname}{i}" in hostnames:
                 i += 1
             new_hostname = f"{hostname}{i}"
-
 
         command = f"INSERT INTO {self.table_name} (mac, hostname) VALUES (?, ?);"
         self.commit(command, mac, new_hostname)
