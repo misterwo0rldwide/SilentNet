@@ -12,8 +12,12 @@
         <p><strong>Page Not Found</strong></p>
         <p>The page you're looking for doesn't exist or has been moved.</p>
         <p>You will be automatically redirected to the previous page in <span id="countdown">10</span> seconds.</p>
-        <a href="#" class="button" id="redirectButton">Go to Previous page Now</a>
+        <a href="{{ redirect_url }}" class="button" id="redirectButton">Go to Previous page Now</a>
     </div>
     <script src="{{ url_for('static', filename='js/http_error.js') }}"></script>
+    <script>
+        // Pass the redirect URL to JavaScript
+        const redirectUrl = "{{ redirect_url }}";
+    </script>
 </body>
 </html>

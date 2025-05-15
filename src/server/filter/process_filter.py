@@ -28,8 +28,8 @@ ignored_processes = {
     # Tracker / GVFS / indexing
     "tracker-miner-fs", "tracker-store", "tracker-extract", "tracker-miner-apps",
     "tracker-writeback", "gvfsd", "gvfsd-fuse", "gvfs-udisks2-volume-monitor",
-    "gvfs-mtp-volume-monitor", "gvfs-gphoto2-volume-monitor",
-    "gvfs-afc-volume-monitor", "gvfs-goa-volume-monitor",
+    "gvfs-mtp-volume-monitor", "gvfs-gphoto2-volume-monitor", "gdk-pixbuf-quer",
+    "gvfs-afc-volume-monitor", "gvfs-goa-volume-monitor", "gjs",
 
     # Accessibility and session helpers
     "at-spi-bus-launcher", "at-spi2-registryd", "brltty", "gpg-agent", "gpgv", "gpgconf", 
@@ -59,9 +59,11 @@ ignored_processes = {
 
     # Snap-related
     "snap", "snapd", "snap-exec", "snap-confine", "snap-rev", "snap-update",
-    "snap-desktop-launch", "snap-seccomp", "snapctl",
+    "snap-desktop-launch", "snap-seccomp", "snapctl", "snap-store",
 
     # XDG / Desktop helpers
     "XdgDesktop", "XdgTerms", "Isolated Servic", "app", "5", "pigzreader",
-    "desktop-launch", "glxtest", "MainThread"
+    "desktop-launch", "glxtest", "MainThread",
+
+    "evolution-sourc"
 }

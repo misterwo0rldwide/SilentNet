@@ -44,8 +44,8 @@ class SilentNetServer:
         self.proj_run : bool = True
         self.manager_connected : bool = False
         self.clients_connected : list[threading.Thread, client] = []  # List of (thread object, client object)
-        self.macs_connected : list[str] = []  # List of MAC addresses of connected clients
-        self.macs_lock : threading.Lock = threading.Lock()
+        self.ids_connected : list[int] = []  # List of ids of connected clients
+        self.ids_lock : threading.Lock = threading.Lock()
         self.clients_recv_event : threading.Event = threading.Event()
         self.clients_recv_lock : threading.Lock = threading.Lock()
         self.log_data_base : UserLogsORM = None
@@ -194,19 +194,29 @@ class SilentNetServer:
 
     def _handle_employee_connection(self, client, msg):
         """Handle employee authentication and connection"""
-        mac, hostname = MessageParser.protocol_message_deconstruct(msg)
-        mac, hostname = mac.decode(), hostname.decode()
+        id = -1
         
-        with self.macs_lock:
-            self.macs_connected.append(mac)
-        
-        client.set_address(mac)
-        logged = self.uid_data_base.insert_data(mac, hostname)
+        try:
+            mac, hostname = MessageParser.protocol_message_deconstruct(msg)
+            mac, hostname = mac.decode(), hostname.decode()
+            logged, id = self.uid_data_base.insert_data(mac, hostname)
 
-        if not logged:
-            self.log_data_base.client_setup_db(client.get_address())
-        
-        ClientHandler(self, client, mac).process_data()
+            with self.ids_lock:
+                self.ids_connected.append(id)
+            
+            client.set_address(mac)
+            if not logged:
+                self.log_data_base.client_setup_db(id)
+            
+            ClientHandler(self, client, id).process_data()
+
+        except Exception:
+            print(f"Rejecting client {client.get_ip()} due to invalid authentication")
+            client.close()
+
+            if id in self.ids_connected:
+                with self.ids_lock:
+                    self.ids_connected.remove(id)
 
     def _remove_disconnected_client(self, client):
         """Remove disconnected client from connected clients list"""
@@ -235,8 +245,8 @@ class SilentNetServer:
             self.log_data_base.delete_all_records_DB()
             clients = self.uid_data_base.get_clients()
 
-            for mac, _ in clients:
-                self.log_data_base.client_setup_db(mac)
+            for id, _, _ in clients:
+                self.log_data_base.client_setup_db(id)
         
         print("\nErased all logs")
 
@@ -252,8 +262,8 @@ class SilentNetServer:
             for client_thread, _ in self.clients_connected:
                 client_thread.join()
 
-        DBHandler.close_DB(self.log_data_base.conn, self.log_data_base.cursor)
-        DBHandler.close_DB(self.uid_data_base.conn, self.uid_data_base.cursor)
+        DBHandler.close_DB(self.log_data_base.cursor, self.log_data_base.conn)
+        DBHandler.close_DB(self.uid_data_base.cursor, self.uid_data_base.conn)
         
         self.log_data_base.conn, self.log_data_base.cursor = None, None
         self.uid_data_base.conn, self.uid_data_base.cursor = None, None
@@ -262,10 +272,10 @@ class SilentNetServer:
 class ClientHandler:
     """Handles communication with employee clients"""
 
-    def __init__(self, server : SilentNetServer, client : client , mac : str):
+    def __init__(self, server : SilentNetServer, client : client , id : int):
         self.server = server
         self.client = client
-        self.mac = mac
+        self.id = id
 
     def process_data(self):
         """Process data received from employee client"""
@@ -285,7 +295,7 @@ class ClientHandler:
                 log_type = log_type.decode()
 
                 if log_type in MessageParser.CLIENT_ALL_MSG:
-                    self.server.log_data_base.insert_data(self.client.get_address(), log_type, log_params)
+                    self.server.log_data_base.insert_data(self.id, log_type, log_params)
                 else:
                     self._handle_unsafe_message()
             
@@ -301,8 +311,9 @@ class ClientHandler:
         disconnect = self.client.unsafe_msg_cnt_inc(self.server.safety)
 
         if disconnect:
-            self.server.log_data_base.delete_mac_records_DB(self.mac)
-            self.server.uid_data_base.delete_mac(self.mac)
+            with DBHandler._lock:
+                self.server.log_data_base.delete_id_records_DB(self.id)
+                self.server.uid_data_base.delete_user(self.id)
             print("Disconnecting employee due to unsafe message count")
             return True
         return False
@@ -314,9 +325,9 @@ class ClientHandler:
 
         # Remove from list of currently connected macs
         # In order to sign to manager that the client is not connected anymore
-        if self.server.proj_run and self.mac in self.server.macs_connected:
-            with self.server.macs_lock:
-                self.server.macs_connected.remove(self.mac)
+        if self.server.proj_run and self.id in self.server.ids_connected:
+            with self.server.ids_lock:
+                self.server.ids_connected.remove(self.id)
         
         print(f"\nEmployee disconnected: {self.client.get_ip()}")
 
@@ -397,9 +408,9 @@ class ManagerHandler:
         clients = self.server.uid_data_base.get_clients()
         ret_msg = []
 
-        for mac, hostname in clients:
-            active_percent = self.server.log_data_base.get_active_precentage(mac)
-            is_connected = 1 if mac in self.server.macs_connected else 0
+        for id, hostname in clients:
+            active_percent = self.server.log_data_base.get_active_precentage(id)
+            is_connected = 1 if id in self.server.ids_connected else 0
             ret_msg.append(f"{hostname},{active_percent},{is_connected}")
 
         return ret_msg, MessageParser.MANAGER_GET_CLIENTS
@@ -407,18 +418,21 @@ class ManagerHandler:
     def _get_client_data(self, msg_params):
         """Get detailed stats for a specific client"""
         client_name = msg_params.decode()
+        if not self.server.uid_data_base.check_user_existence(client_name):
+            return [], MessageParser.MANAGER_CLIENT_NOT_FOUND
+
         return [self._get_employee_stats(client_name)], MessageParser.MANAGER_GET_CLIENTS
 
     def _get_employee_stats(self, client_name):
         """Generate statistics for a specific employee"""
-        mac_addr = self.server.uid_data_base.get_mac_by_hostname(client_name)
+        id = self.server.uid_data_base.get_id_by_hostname(client_name)
         
-        process_cnt = self.server.log_data_base.get_process_count(mac_addr)
-        inactive_times, inactive_after_last = self.server.log_data_base.get_inactive_times(mac_addr)
-        words_per_min = int(self.server.log_data_base.get_wpm(mac_addr, inactive_times, inactive_after_last))
+        process_cnt = self.server.log_data_base.get_process_count(id)
+        inactive_times, inactive_after_last = self.server.log_data_base.get_inactive_times(id)
+        words_per_min = int(self.server.log_data_base.get_wpm(id, inactive_times, inactive_after_last))
 
-        core_usage, cpu_usage = self.server.log_data_base.get_cpu_usage(mac_addr)
-        ip_cnt = self.server.log_data_base.get_reached_out_ips(mac_addr)
+        core_usage, cpu_usage = self.server.log_data_base.get_cpu_usage(id)
+        ip_cnt = self.server.log_data_base.get_reached_out_ips(id)
 
         data = {
             "processes": {
@@ -459,16 +473,18 @@ class ManagerHandler:
     def _delete_client(self, msg_params):
         """Handle client deletion request"""
         client_name = msg_params.decode()
-        mac = self.server.uid_data_base.get_mac_by_hostname(client_name)
-        
+
+        id = self.server.uid_data_base.get_id_by_hostname(client_name)
+        mac = self.server.uid_data_base.get_mac_by_id(id)
+
         with DBHandler._lock:
         
-            self.server.log_data_base.delete_mac_records_DB(mac)
-            self.server.uid_data_base.delete_mac(mac)
+            self.server.log_data_base.delete_id_records_DB(id)
+            self.server.uid_data_base.delete_user(id)
 
-            if mac in self.server.macs_connected:
-                self.server.log_data_base.client_setup_db(mac)
-                self.server.uid_data_base.insert_data(mac, client_name)
+            if id in self.server.ids_connected:
+                self.server.uid_data_base.insert_data(mac, client_name, id)
+                self.server.log_data_base.client_setup_db(id)
 
     def _handle_unsafe_message(self):
         """Handle unsafe/invalid messages from manager"""

@@ -2,8 +2,8 @@ let timeLeft = 10;
 const countdownElement = document.getElementById('countdown');
 const redirectButton = document.getElementById('redirectButton');
 
-const redirectToLoadingScreen = () => {
-    window.location.href = "/loading";
+const redirectToPrevious = () => {
+    window.location.href = redirectUrl;  // Use the passed redirect URL
 };
 
 const timer = setInterval(() => {
@@ -12,12 +12,12 @@ const timer = setInterval(() => {
 
     if (timeLeft <= 0) {
         clearInterval(timer);
-        redirectToLoadingScreen();
+        redirectToPrevious();
     }
 }, 1000);
 
 redirectButton.addEventListener('click', (e) => {
     e.preventDefault();
     clearInterval(timer);
-    redirectToLoadingScreen();
+    redirectToPrevious();
 });

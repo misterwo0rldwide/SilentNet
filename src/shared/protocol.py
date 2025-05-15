@@ -63,6 +63,9 @@ class MessageParser:
     MANAGER_VALID_CONN = "MVC"
     MANAGER_ALREADY_CONNECTED = "MAC"
 
+    # Name of client not found
+    MANAGER_CLIENT_NOT_FOUND = "MNF"
+
 
     """
         Decorator staticmethod does not block a function to be called through an instance

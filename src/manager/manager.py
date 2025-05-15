@@ -107,7 +107,7 @@ class SilentNetManager:
 
     def page_not_found(self, error):
         """Handle 404 errors"""
-        return render_template("http_error.html")
+        return render_template("http_error.html", redirect_url=self.previous_screen)
 
     def internal_error(self, error):
         """Handle 500 errors"""
@@ -233,11 +233,16 @@ class SilentNetManager:
     def stats_screen(self):
         """Render detailed statistics screen for a client"""
         client_name = request.args.get('client_name')
-        self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
+        if client_name is None:
+            return redirect(url_for("employees_screen"))
 
+        self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
         stats = self.manager_socket.protocol_recv()
         if stats == b"":
             return redirect(url_for("loading_screen"))
+        
+        if stats[MessageParser.PROTOCOL_DATA_INDEX - 1].decode() == MessageParser.MANAGER_CLIENT_NOT_FOUND:
+            return redirect(url_for("employees_screen"))
         
         stats = json.loads(stats[MessageParser.PROTOCOL_DATA_INDEX])
         return render_template("stats_screen.html", stats=stats, client_name=client_name)
@@ -262,6 +267,10 @@ class SilentNetManager:
 def main():
     """Entry point for the manager application"""
     global server_ip
+    server_ip = "127.0.0.1"
+    manager = SilentNetManager()
+    manager.run()
+    """
     if len(argv) != 2:
         print("Wrong Usage: python manager.py <server_ip>")
     
@@ -279,7 +288,7 @@ def main():
         server_ip = ".".join(ip)
         manager = SilentNetManager()
         manager.run()
-
+    """
 
 if __name__ == "__main__":
     main()
