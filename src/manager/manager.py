@@ -267,10 +267,8 @@ class SilentNetManager:
 def main():
     """Entry point for the manager application"""
     global server_ip
-    server_ip = "127.0.0.1"
-    manager = SilentNetManager()
-    manager.run()
-    """
+
+
     if len(argv) != 2:
         print("Wrong Usage: python manager.py <server_ip>")
     
@@ -288,7 +286,6 @@ def main():
         server_ip = ".".join(ip)
         manager = SilentNetManager()
         manager.run()
-    """
 
 if __name__ == "__main__":
     main()
