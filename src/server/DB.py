@@ -320,12 +320,6 @@ class UserLogsORM (DBHandler):
         if data_type == MessageParser.CLIENT_CPU_USAGE:
             self.__update_cpu_usage(id, data)
             return
-        
-        # Ignore process which are usually not used by the user
-        if data_type == MessageParser.CLIENT_PROCESS_OPEN:
-            data = data.decode()
-            if data in process_filter.ignored_processes:
-                return
 
         command = f"SELECT count FROM {self.table_name} WHERE id = ? AND type = ? AND data = ?;"
         count = self.commit(command, id, data_type, data)
@@ -570,12 +564,12 @@ class UserId (DBHandler):
 
         if id == -1:
             command = f"INSERT OR IGNORE INTO {self.table_name} (mac, hostname, original_hostname) VALUES (?, ?, ?);"
-            self.commit(command, mac, new_hostname, new_hostname)
+            self.commit(command, mac, new_hostname, hostname)
 
             return False, self.commit(id_command, mac, new_hostname)[0][0]
 
         command = f"INSERT OR IGNORE INTO {self.table_name} (id, mac, hostname, original_hostname) VALUES (?, ?, ?, ?);"
-        self.commit(command, id, mac, new_hostname, new_hostname)
+        self.commit(command, id, mac, new_hostname, hostname)
         return False, id
     
     def update_name(self, prev_name : str, new_name : str):

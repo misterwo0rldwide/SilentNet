@@ -23,6 +23,7 @@ sys.path.append(os.path.abspath(os.path.join(path, '../shared')))
 
 from protocol import *
 from DB import *
+from filter import process_limit
 
 __author__ = "Omer Kfir"
 
@@ -273,9 +274,12 @@ class ClientHandler:
     """Handles communication with employee clients"""
 
     def __init__(self, server : SilentNetServer, client : client , id : int):
-        self.server = server
+        self.server : SilentNetServer = server
         self.client = client
-        self.id = id
+        self.id : int = id
+
+        # Dictionary for repeated processes
+        self.processManager : process_limit.ProcessDebouncer = process_limit.ProcessDebouncer()
 
     def process_data(self):
         """Process data received from employee client"""
@@ -293,6 +297,16 @@ class ClientHandler:
 
                 log_type, log_params = data[0], data[1]
                 log_type = log_type.decode()
+
+                # Ignore process which are usually not used by the user
+                if log_type == MessageParser.CLIENT_PROCESS_OPEN:
+                    log_params = log_params.decode()
+
+                    if log_params in process_filter.ignored_processes:
+                        continue
+
+                    if not self.processManager.should_log(log_params):
+                        continue
 
                 if log_type in MessageParser.CLIENT_ALL_MSG:
                     self.server.log_data_base.insert_data(self.id, log_type, log_params)
