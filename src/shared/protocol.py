@@ -211,7 +211,6 @@ class TCPsocket:
             OUTPUT: None
         """
 
-
         self.__sock.close()
 
     def log(self, prefix : str, data: Union[bytes, str], max_to_print: int=DEBUG_PRINT_LEN) -> None:
@@ -468,7 +467,8 @@ class client (TCPsocket):
         except socket.timeout:
             return b'ERR'
 
-        except Exception:
+        except Exception as e:
+            print(e)
             return b''
         
     def protocol_send(self, msg_type, *args, encrypt: bool = True, compress : bool = True) -> None:
@@ -543,5 +543,5 @@ class server (TCPsocket):
         """
         
         c = client(self.server_socket_recv_client())
-        c.set_timeout(5)
+        c.set_timeout(1)
         return c
