@@ -334,7 +334,6 @@ class ClientHandler:
 
     def _cleanup_disconnection(self):
         """Clean up when client disconnects"""
-        
         self.client.close()
 
         # Remove from list of currently connected macs

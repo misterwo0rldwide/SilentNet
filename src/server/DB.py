@@ -294,6 +294,7 @@ class UserLogsORM (DBHandler):
             @data: Bytes of data
         """
 
+        print(data)
         command = f"SELECT data FROM {self.table_name} WHERE id = ? AND type = ?;"
         cpu_logs = self.commit(command, id, MessageParser.CLIENT_CPU_USAGE)[0][0]
         
