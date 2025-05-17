@@ -543,5 +543,5 @@ class server (TCPsocket):
         """
         
         c = client(self.server_socket_recv_client())
-        c.set_timeout(1)
+        c.set_timeout(5)
         return c
