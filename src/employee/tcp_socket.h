@@ -1,9 +1,3 @@
-/*
- * tcp_socket.h - Header file for tcp_socket.c
- *
- * Omer Kfir (C)
- */
-
 #ifndef TCP_SOCK_H
 #define TCP_SOCK_H
 
@@ -25,6 +19,7 @@
 struct socket *tcp_sock_create(void);
 int tcp_sock_connect(struct socket *, const char *, uint16_t);
 int tcp_send_msg(struct socket *, const char *, size_t);
+int check_valid_connection(struct socket *);
 void tcp_sock_close(struct socket *);
 bool check_sock_mark(struct sock *, __u32);
 

@@ -67,6 +67,14 @@ void transmit_data(struct work_struct *work) {
     }
   }
 
+  // Because we assume that the connection is valid
+  // We will add a manual check for the connnection
+  // To see if we received a FIN packet
+  if (check_valid_connection(sock) < 0) {
+    disconnect(curr_msg->msg_buf, curr_msg->length);
+    goto end;
+  }
+
   ret = tcp_send_msg(sock, curr_msg->msg_buf, curr_msg->length);
   if (ret < 0) {
     disconnect(curr_msg->msg_buf, curr_msg->length);
@@ -100,7 +108,7 @@ void handle_credentials(void) {
   get_mac_address(mac_buf);
 
   if ((int)strlen(uName) == 0)
-	uName = utsname()->nodename;
+    uName = utsname()->nodename;
 
   protocol_format(cred, "%s" PROTOCOL_SEPARATOR "%s" PROTOCOL_SEPARATOR "%s",
                   MSG_AUTH, mac_buf, uName);

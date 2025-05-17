@@ -2,10 +2,8 @@
  * 'slient net' project client tcp socket code.
  * Handles communication implementation.
  *
- * Provides basic tcp socket abstraction
- * For KLM
+ * blah blah blah
  *
- * Omer Kfir (C)
  */
 
 #include "tcp_socket.h"
@@ -89,6 +87,37 @@ int tcp_send_msg(struct socket *sock, const char *msg, size_t length) {
     printk(KERN_ERR "Failed to send message %d\n", err);
 
   return err;
+}
+
+int check_valid_connection(struct socket *sock) {
+  char buf[1];
+  struct msghdr msg = {0};
+  struct kvec vec;
+  int ret;
+
+  if (!sock || !sock->sk)
+    return -ENOTCONN;
+
+  /* Check if socket is connected */
+ if (sock->sk->sk_state != TCP_ESTABLISHED) {
+    printk(KERN_ERR "Socket not connected\n");
+    return -ENOTCONN;
+ }
+  vec.iov_base = buf;
+  vec.iov_len = 1;
+  ret = kernel_recvmsg(sock, &msg, &vec, 1, 1, MSG_PEEK | MSG_DONTWAIT);
+
+  if (ret == 0) {
+    // Received FIN
+    printk(KERN_INFO "here\n");
+    return -ENOTCONN;
+  } else if (ret < 0 && ret != -EAGAIN) {
+    // Other error
+    return ret;
+  }
+
+  // Still connected
+  return 0;
 }
 
 /* Close socket struct */
