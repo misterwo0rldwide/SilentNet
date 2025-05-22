@@ -102,7 +102,7 @@ class SilentNetServer:
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for server control"""
         on_press_key('q', lambda _: self.quit_server())
-        #on_press_key('e', lambda _: self.erase_all_logs())
+        on_press_key('e', lambda _: self.erase_all_logs())
 
     def _run_server(self):
         """Main server loop to accept and handle client connections"""
@@ -246,7 +246,7 @@ class SilentNetServer:
             self.log_data_base.delete_all_records_DB()
             clients = self.uid_data_base.get_clients()
 
-            for id, _, _ in clients:
+            for id, _ in clients:
                 self.log_data_base.client_setup_db(id)
         
         print("\nErased all logs")
@@ -492,12 +492,18 @@ class ManagerHandler:
 
         with DBHandler._lock:
         
+            # Delete client stats
             self.server.log_data_base.delete_id_records_DB(id)
-            self.server.uid_data_base.delete_user(id)
 
+            # If client is currently connected we need to keep his default
+            # Logs in the logging table
             if id in self.server.ids_connected:
-                self.server.uid_data_base.insert_data(mac, client_name, id)
                 self.server.log_data_base.client_setup_db(id)
+            
+            # If the client is not connected during its deletion then we completely
+            # Earase his data from all the tables
+            else:
+                self.server.uid_data_base.delete_user(id)
 
     def _handle_unsafe_message(self):
         """Handle unsafe/invalid messages from manager"""

@@ -268,7 +268,6 @@ def main():
     """Entry point for the manager application"""
     global server_ip
 
-
     if len(argv) != 2:
         print("Wrong Usage: python manager.py <server_ip>")
     

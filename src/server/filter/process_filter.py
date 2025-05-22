@@ -65,5 +65,6 @@ ignored_processes = {
     "XdgDesktop", "XdgTerms", "Isolated Servic", "app", "5", "pigzreader",
     "desktop-launch", "glxtest", "MainThread",
 
-    "evolution-sourc"
+    # Background ubuntu tasks
+    "evolution-sourc", "evolution-calen"
 }

@@ -452,10 +452,7 @@ class UserLogsORM (DBHandler):
             OUTPUT: Integer
         """
 
-        inactive_time, inactive_after_last = self.get_inactive_times(id)
-
-        if inactive_after_last:
-            inactive_time = inactive_time[:-1]
+        inactive_time, _ = self.get_inactive_times(id)
         
         total_inactive = sum(int(i[1]) for i in inactive_time if i != '' and len(i) > 1)
         total_active = self.__get_total_active_time(id)
