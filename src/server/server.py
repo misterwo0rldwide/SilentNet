@@ -144,7 +144,7 @@ class SilentNetServer:
     def _handle_client_connection(self, client : client):
         """Determine client type and route to appropriate handler"""
         data = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False, decompress=False)
-        if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION):
+        if data == b'' or (isinstance(data, list) and data[0].decode() == MessageParser.MANAGER_CHECK_CONNECTION) or data == b'ERR':
             self._remove_disconnected_client(client)
             return
 

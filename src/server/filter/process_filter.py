@@ -9,6 +9,7 @@ ignored_processes = {
     "systemd-timesyncd", "systemd-resolved", "systemd-networkd",
     "upstart", "rsyslogd", "cron", "atd", "dbus-daemon", "login", "agetty",
     "polkitd", "udisksd", "colord", "fwupd", "rtkit-daemon", "accounts-daemon",
+    "ubuntu-advantag", "livepatch-notif", "check-new-relea", "lsb_release",
 
     # Udev-related
     "udevd", "systemd-udevd", "udevadm", "eudev", "devtmpfs", "mdev",
@@ -55,7 +56,7 @@ ignored_processes = {
     "Web Content", "RDD Process", "Socket Process", "Privileged Cont",
     "Utility Process", "Sandbox", "Isolated Web Co", "Forked",
     "plugin-cont", "WebExtensions", "Sandbox Forked", "WebKitNetworkPr", "WebKitWebProces",
-    "apt-key", "apt-config", 
+    "apt-key", "apt-config", "apt-check",
 
     # Snap-related
     "snap", "snapd", "snap-exec", "snap-confine", "snap-rev", "snap-update",

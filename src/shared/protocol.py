@@ -120,6 +120,7 @@ class MessageParser:
 
 class TCPsocket:
     MSG_LEN_LEN = 4
+    CHUNK_MAX_LEN = (1024 * 4)
 
     def __init__(self, sock: Optional[socket.socket] = None):
         """
@@ -248,12 +249,13 @@ class TCPsocket:
             @data -> Stream of bytes
         """
         
+        
         buffer = b''
         
         # Recv until 'size' amount of bytes is received
         while size:
-        
-            tmp_buf = self.__sock.recv(size)
+            # Receive data in chunks with max size of 'CHUNK_MAX_LEN'
+            tmp_buf = self.__sock.recv(min(size, self.CHUNK_MAX_LEN))
             
             if not tmp_buf:
                 return b''
@@ -312,7 +314,16 @@ class TCPsocket:
         data = len_data + data
         
         # Send data and log it
-        self.__sock.sendall(data)
+        total_sent = 0
+        while total_sent < len(data):
+            to_send = data[total_sent:total_sent + self.CHUNK_MAX_LEN]
+            sent = self.__sock.send(to_send)
+
+            if sent == 0:
+                raise RuntimeError("Socket connection broken")
+            
+            total_sent += sent
+            
         self.log("Sent", data)
 
     @staticmethod
