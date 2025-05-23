@@ -2,8 +2,10 @@
  * 'slient net' project client tcp socket code.
  * Handles communication implementation.
  *
- * blah blah blah
+ * This file is part of the 'silent_net' project.
+ * Helps to create a TCP socket and send messages through it.
  *
+ * Omer Kfir (C)
  */
 
 #include "tcp_socket.h"

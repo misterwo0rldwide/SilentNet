@@ -1,7 +1,8 @@
 /*
  *	'silent_net' data transmission
- *
- *
+ *  This file is part of the 'silent_net' project.
+ *  Handles the data transmission to the server and backup data.
+ * 
  *	Omer Kfir (C)
  */
 

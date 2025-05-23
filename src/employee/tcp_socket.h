@@ -1,3 +1,9 @@
+/*
+ * Header file for tcp_socket.c
+ *
+ * Omer Kfir (C)
+*/
+
 #ifndef TCP_SOCK_H
 #define TCP_SOCK_H
 

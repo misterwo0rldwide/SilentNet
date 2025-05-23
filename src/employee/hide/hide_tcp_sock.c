@@ -1,3 +1,10 @@
+/*
+ * hide_tcp_sock.c - Provides functionality to hide TCP sockets
+ *                   and packets from being displayed in wireshark and similar tools.
+ * 
+ * Omer Kfir (C)
+ */
+
 #include "hide_tcp_sock.h"
 
 struct ftrace_hook {

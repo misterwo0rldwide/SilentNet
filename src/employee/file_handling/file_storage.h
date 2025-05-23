@@ -1,5 +1,5 @@
 /*
- *	'silent_net' header file.
+ *	'silent_net' header file for file_storage.c
  *
  *	Omer Kfir (C)
  */
