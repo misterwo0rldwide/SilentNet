@@ -282,7 +282,10 @@ class TCPsocket:
         if data_len == b'':
             return data_len
         
-        data_len = int(data_len)
+        try:
+            data_len = int(data_len)
+        except Exception:
+            return b''
 
         # Recv actual message and log it
         data = self.__recv_amount(data_len)
