@@ -149,7 +149,7 @@ class SilentNetServer:
             return
 
         msg_type = data[0].decode()
-        if len(self.clients_connected) >= self.max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
+        if len(self.clients_connected) > self.max_clients and msg_type == MessageParser.CLIENT_MSG_AUTH:
             self._remove_disconnected_client(client)
             return
 
