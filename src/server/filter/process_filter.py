@@ -48,6 +48,7 @@ ignored_processes = {
     "gnome-software", "update-notifier", "packagekitd", "packagekit",
     "mission-control-5", "telepathy-*", "boltd", "geoclue", "ibus-daemon",
     "ibus-engine-simple", "ibus-x11", "pactl", "pw-cat", "pw-cli", "gnome-session-b",
+    "gvsd-recent",
 
     # Firmware and security agents
     "fwupd", "fwupd-refresh", "apport", "whoopsie", "kerneloops",
@@ -56,7 +57,7 @@ ignored_processes = {
     "Web Content", "RDD Process", "Socket Process", "Privileged Cont",
     "Utility Process", "Sandbox", "Isolated Web Co", "Forked",
     "plugin-cont", "WebExtensions", "Sandbox Forked", "WebKitNetworkPr", "WebKitWebProces",
-    "apt-key", "apt-config", "apt-check",
+    "apt-key", "apt-config", "apt-check", "crashreporter",
 
     # Snap-related
     "snap", "snapd", "snap-exec", "snap-confine", "snap-rev", "snap-update",
