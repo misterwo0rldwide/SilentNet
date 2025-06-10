@@ -334,15 +334,17 @@ function changeClientName() {
             new_name: newName,
         }),
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('clientName').textContent = newName;
-            document.getElementById('newClientName').value = "";
-            alert("Client name updated successfully!");
-        } else {
-            alert(data.message || "Failed to update client name.");
-        }
-        button.disabled = false;
-    });
+	.then(response => response.json())
+	.then(data => {
+		if (data.redirect) {
+			window.location.href = data.redirect;
+		} else if (data.success) {
+			document.getElementById('clientName').textContent = newName;
+			document.getElementById('newClientName').value = "";
+			alert("Client name updated successfully!");
+		} else {
+			alert(data.message || "Failed to update client name.");
+		}
+		button.disabled = false;
+	});
 }

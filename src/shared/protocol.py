@@ -132,6 +132,7 @@ class TCPsocket:
             @sock -> Socket object (socket.socket)
         """
         
+        self.__ip = ""
         if sock is None:
             self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
@@ -203,6 +204,7 @@ class TCPsocket:
         """
         
         self.__sock.connect((dst_ip, dst_port))
+        self.__ip = dst_ip
     
     def close(self):
         """
@@ -280,6 +282,11 @@ class TCPsocket:
         data_len = self.__recv_amount(self.MSG_LEN_LEN) #  Recv length of message
 
         if data_len == b'':
+            ip = self.get_ip()
+            if ip:
+                print(f"\nConnection forcibly closed by {ip}")
+            else:
+                print("\nConnection forcibly closed")
             return data_len
         
         try:
@@ -407,7 +414,9 @@ class client (TCPsocket):
         try:
             if self.__encryption is not Ellipsis:
                 # If client is a manager object
-                self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
+                sent = self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, *self.__encryption.get_base_prime(), encrypt=False)
+                if sent == 0:
+                    return False
             else:
                 # If client is a server object
                 data_type, data = self.protocol_recv(1, decrypt=False)
@@ -417,7 +426,9 @@ class client (TCPsocket):
                 data = MessageParser.protocol_message_deconstruct(data, 1)
                 self.__encryption = EncryptionHandler(int(data[0]), int(data[1]))
 
-            self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
+            sent = self.protocol_send(MessageParser.ENCRYPTION_EXCHANGE, self.__encryption.dh.get_public_key(), encrypt=False)
+            if sent == 0:
+                return False
             
             data_type, data = self.protocol_recv(1, decrypt=False)
             if data_type.decode() != MessageParser.ENCRYPTION_EXCHANGE:
@@ -480,17 +491,26 @@ class client (TCPsocket):
         
         except socket.timeout:
             return b'ERR'
+        
+        except OSError as e:
+            if e.winerror == 10054:
+                ip = self.get_ip()
+                if ip:
+                    print(f"\nConnection forcibly closed by {ip}")
+                else:
+                    print("\nConnection forcibly closed")
+                return b''
 
         except Exception as e:
             print(e)
             return b''
         
-    def protocol_send(self, msg_type, *args, encrypt: bool = True, compress : bool = True) -> None:
+    def protocol_send(self, msg_type, *args, encrypt: bool = True, compress : bool = True) -> int:
         """
             Sends a message constructed by protocl
             
             INPUT: msg_type, *args (Uknown amount of arguments)
-            OUTPUT: None
+            OUTPUT: Number 1/0 which representes if message was sent successfully
             
             @msg_type -> Message type of the message to be sent
             @args -> The rest of the data to be sent in the message
@@ -498,15 +518,31 @@ class client (TCPsocket):
             @compress -> Boolean to indicate if to compress
         """
 
-        constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
+        try:
+            constr_msg = MessageParser.protocol_message_construct(msg_type, *args)
+            
+            if compress:
+                constr_msg = zlib.compress(constr_msg)
+            
+            if encrypt:
+                constr_msg = self.__encryption.encrypt(constr_msg)
+            
+            self.send(constr_msg)
+            return 1
         
-        if compress:
-            constr_msg = zlib.compress(constr_msg)
-        
-        if encrypt:
-            constr_msg = self.__encryption.encrypt(constr_msg)
-        
-        self.send(constr_msg)
+        except OSError as e:
+            if e.winerror == 10054:
+                ip = self.get_ip()
+                if ip:
+                    print(f"\nConnection forcibly closed by {ip}")
+                else:
+                    print("\nConnection forcibly closed")
+                return 0
+
+        except Exception as e:
+            print(e)
+            return 0
+            
 
     def unsafe_msg_cnt_inc(self, safety : int) -> bool:
         """

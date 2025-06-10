@@ -136,9 +136,8 @@ class SilentNetManager:
             if not self.is_connected:
                 return redirect(url_for("loading_screen"))
         
-        try:
-            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False, compress=False)
-        except Exception:
+        sent = self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_PASSWORD, encrypt=False, compress=False)
+        if sent == 0:
             self.connect_to_server()
             if not self.is_connected:
                 return redirect(url_for("loading_screen"))
@@ -148,7 +147,10 @@ class SilentNetManager:
         if not self.manager_socket.exchange_keys():
             return redirect(url_for("loading_screen"))
 
-        self.manager_socket.protocol_send(password)
+        sent = self.manager_socket.protocol_send(password)
+        if sent == 0:
+            return redirect(url_for("loading_screen"))
+        
         response = self.manager_socket.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
         
         if response == MessageParser.MANAGER_VALID_CONN:
@@ -169,16 +171,22 @@ class SilentNetManager:
         employees_amount = request.form.get('employees_amount')
         safety = request.form.get('safety')
 
-        self.manager_socket.protocol_send(
+        sent = self.manager_socket.protocol_send(
             MessageParser.MANAGER_SND_SETTINGS, 
             employees_amount, 
             safety
         )
+        if sent == 0:
+            return redirect(url_for("loading_screen"))
+        
         return redirect(url_for("employees_screen"))
 
     def employees_screen(self):
         """Render employee list screen"""
-        self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+        sent = self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENTS)
+        if sent == 0:
+            return redirect(url_for("loading_screen"))
+        
         clients = self.manager_socket.protocol_recv()
         if clients == b"":
             return redirect(url_for("loading_screen"))
@@ -199,7 +207,10 @@ class SilentNetManager:
         if not client_name:
             return jsonify({'success': False, 'message': 'No name provided'}), 400
         
-        self.manager_socket.protocol_send(MessageParser.MANAGER_DELETE_CLIENT, client_name)
+        sent = self.manager_socket.protocol_send(MessageParser.MANAGER_DELETE_CLIENT, client_name)
+        if sent == 0:
+            return redirect(url_for("loading_screen"))
+
         return jsonify({'success': True, 'message': f'Client {client_name} deleted successfully'})
 
     def manual_connect(self):
@@ -218,17 +229,21 @@ class SilentNetManager:
         data = request.get_json()
         current_name, new_name = data.get('current_name'), data.get('new_name')
         
-        self.manager_socket.protocol_send(
+        sent = self.manager_socket.protocol_send(
             MessageParser.MANAGER_CHG_CLIENT_NAME, 
             current_name, 
             new_name
         )
+        if sent == 0:
+            return jsonify({"redirect": url_for("loading_screen")})
 
         response = self.manager_socket.protocol_recv()[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
         if response == MessageParser.MANAGER_VALID_CHG:
             return jsonify({"success": True})
-        else:
+        elif response == MessageParser.MANAGER_INVALID_CHG:
             return jsonify({"success": False, "message": "Name is already used"})
+        else:
+            return jsonify({"redirect": url_for("loading_screen")})
 
     def stats_screen(self):
         """Render detailed statistics screen for a client"""
@@ -236,7 +251,10 @@ class SilentNetManager:
         if client_name is None:
             return redirect(url_for("employees_screen"))
 
-        self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
+        sent = self.manager_socket.protocol_send(MessageParser.MANAGER_GET_CLIENT_DATA, client_name)
+        if sent == 0:
+            return redirect(url_for("loading_screen"))
+        
         stats = self.manager_socket.protocol_recv()
         if stats == b"":
             return redirect(url_for("loading_screen"))

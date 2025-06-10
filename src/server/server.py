@@ -115,31 +115,37 @@ class SilentNetServer:
 
     def _accept_clients(self):
         """Accept and manage incoming client connections"""
-        while self.proj_run:
-            try:
-                if len(self.clients_connected) < self.max_clients or not self.manager_connected:
-                    client = self.server_comm.recv_client()
-                    client_thread = threading.Thread(target=self._handle_client_connection, args=(client,))
-                    
-                    with self.clients_recv_lock:
-                        self.clients_connected.append((client_thread, client))
-                    
-                    client_thread.start()
-                    
-                    with self.clients_recv_lock:
+        try:
+            while self.proj_run:
+                try:
+                    if len(self.clients_connected) < self.max_clients or not self.manager_connected:
+                        client = self.server_comm.recv_client()
+                        client_thread = threading.Thread(target=self._handle_client_connection, args=(client,))
+                        
+                        with self.clients_recv_lock:
+                            self.clients_connected.append((client_thread, client))
+                        
+                        client_thread.start()
+                        
                         if len(self.clients_connected) >= self.max_clients:
                             self.clients_recv_event.clear()
-                else:
-                    self.clients_recv_event.wait()
-            except timeout:
-                pass
-            except OSError:
-                print("\nServer socket closed")
-                break
-            except Exception as e:
-                print(f"Error accepting client: {e}")
-                print(traceback.format_exc())
+                    else:
+                        self.clients_recv_event.wait()
+                except timeout:
+                    pass
+                except OSError:
+                    print("\nServer socket closed")
+                    
+                    self.server_comm.close()
+                    self.proj_run = False
+                except Exception as e:
+                    print(f"Error accepting client: {e}")
+                    print(traceback.format_exc())
+        except KeyboardInterrupt:
+            print("\nServer interrupted by user (Ctrl+C)\nClosing server")
             
+            self.server_comm.close()
+            self.proj_run = False
 
     def _handle_client_connection(self, client : client):
         """Determine client type and route to appropriate handler"""
@@ -175,18 +181,23 @@ class SilentNetServer:
     def _handle_manager_connection(self, client, msg):
         """Handle manager authentication and connection"""
         ret_msg_type = MessageParser.MANAGER_INVALID_CONN
-        client.exchange_keys()
+        success = client.exchange_keys()
+        if not success:
+            return False
+        
         msg = client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX)
+        if msg == b'':
+            return False
 
-        if msg != b'':
-            msg = msg[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
-
+        msg = msg[MessageParser.PROTOCOL_DATA_INDEX - 1].decode()
         if msg == self.password:
             ret_msg_type = MessageParser.MANAGER_VALID_CONN
             self.manager_connected = True
 
         sleep(uniform(0, 1))  # Prevent timing attack
-        client.protocol_send(ret_msg_type)
+        sent = client.protocol_send(ret_msg_type)
+        if sent == 0:
+            return False
 
         if ret_msg_type == MessageParser.MANAGER_VALID_CONN:
             ManagerHandler(self, client).process_requests()
@@ -388,7 +399,9 @@ class ManagerHandler:
                     manager_disconnect = self._handle_unsafe_message()
 
                 if ret_msg_type:
-                    self.client.protocol_send(ret_msg_type, *ret_msg)
+                    sent = self.client.protocol_send(ret_msg_type, *ret_msg)
+                    if sent == 0:
+                        break
                 
                 if manager_disconnect:
                     break

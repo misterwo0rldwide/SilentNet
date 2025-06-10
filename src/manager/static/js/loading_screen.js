@@ -6,7 +6,7 @@ function manualConnect() {
                 alert("Connected successfully!");
                 window.location.href = '/';
             } else {
-                alert("Connection attempt failed. Please try again.");
+                alert("Connection attempt failed. Please try again later.");
             }
         });
 }
