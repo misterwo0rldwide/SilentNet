@@ -156,6 +156,10 @@ class UserLogsORM (DBHandler):
         """
         with cls._lock:
             if cls._instance is None:
+
+                # If the instance was not created yet
+                # Call parent's __new__ method to create the instance of this class (UserLogsORM)
+                # Since DBHandler did not override __new__, it will call the default object __new__
                 cls._instance = super(UserLogsORM, cls).__new__(cls)
             return cls._instance
     
@@ -164,6 +168,9 @@ class UserLogsORM (DBHandler):
         Initialize the instance, but only once.
         """
         if not hasattr(self, 'conn') or self.conn is None:
+
+            # If the instance was not initialized yet (first time calling it)
+            # Initialize the instance's values
             super().__init__(conn, cursor, table_name)
     
     def client_setup_db(self, id : int) -> None:
@@ -491,6 +498,10 @@ class UserId (DBHandler):
         """
         with cls._lock:
             if cls._instance is None:
+
+                # If the instance was not created yet
+                # Call parent's __new__ method to create the instance of this class (UserId)
+                # Since DBHandler did not override __new__, it will call the default object __new__
                 cls._instance = super(UserId, cls).__new__(cls)
             return cls._instance
     
@@ -499,6 +510,9 @@ class UserId (DBHandler):
         Initialize the instance, but only once.
         """
         if not hasattr(self, 'conn') or self.conn is None:
+
+            # If the instance was not initialized yet (first time calling it)
+            # Initialize the instance's values
             super().__init__(conn, cursor, table_name)
     
     def delete_user(self, id : int) -> None:
