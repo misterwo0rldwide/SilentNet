@@ -322,12 +322,15 @@ class ClientHandler:
                 if log_type in MessageParser.CLIENT_ALL_MSG:
                     self.server.log_data_base.insert_data(self.id, log_type, log_params)
                 else:
-                    self._handle_unsafe_message()
+                    if self._handle_unsafe_message():
+                        break
             
             except Exception as e:
                 print(f"Error from client {self.client.get_address()}: {e}")
                 print(traceback.format_exc())
-                self._handle_unsafe_message()
+                if self._handle_unsafe_message():
+                    break
+                
 
         self._cleanup_disconnection()
 
