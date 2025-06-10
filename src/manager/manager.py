@@ -188,7 +188,7 @@ class SilentNetManager:
             return redirect(url_for("loading_screen"))
         
         clients = self.manager_socket.protocol_recv()
-        if clients == b"":
+        if clients == b"" or clients == b"ERR":
             return redirect(url_for("loading_screen"))
         
         clients = clients[MessageParser.PROTOCOL_DATA_INDEX:]
@@ -256,7 +256,7 @@ class SilentNetManager:
             return redirect(url_for("loading_screen"))
         
         stats = self.manager_socket.protocol_recv()
-        if stats == b"":
+        if stats == b"" or stats == b"ERR":
             return redirect(url_for("loading_screen"))
         
         if stats[MessageParser.PROTOCOL_DATA_INDEX - 1].decode() == MessageParser.MANAGER_CLIENT_NOT_FOUND:
