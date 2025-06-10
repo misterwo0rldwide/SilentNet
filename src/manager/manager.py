@@ -18,6 +18,7 @@ from functools import wraps
 from flask import Flask, redirect, render_template, request, jsonify, url_for
 
 # Append parent directory to be able to import protocol
+# sys.path - list of directories that the interpreter will search for modules when importing
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../shared')))
 from protocol import *
 
@@ -107,7 +108,7 @@ class SilentNetManager:
 
     def page_not_found(self, error):
         """Handle 404 errors"""
-        return render_template("http_error.html", redirect_url=self.previous_screen)
+        return render_template("http_error.html", redirect_url=self.current_screen)
 
     def internal_error(self, error):
         """Handle 500 errors"""
