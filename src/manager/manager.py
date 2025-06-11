@@ -15,7 +15,7 @@ import signal
 import json
 from sys import argv
 from functools import wraps
-from flask import Flask, redirect, render_template, request, jsonify, url_for
+from flask import Flask, redirect, render_template, request, jsonify, url_for, send_from_directory
 
 # Append parent directory to be able to import protocol
 # sys.path - list of directories that the interpreter will search for modules when importing
@@ -61,6 +61,7 @@ class SilentNetManager:
         self.app.route("/manual-connect")(self.manual_connect)
         self.app.route('/update_client_name', methods=['POST'])(self.update_client_name)
         self.app.route("/stats_screen")(self.check_screen_access(self.stats_screen))
+        self.app.route("/favicon.ico")(lambda: send_from_directory(os.path.join(self.app.root_path, 'static/images'), 'Logo.png', mimetype='image/vnd.microsoft.icon'))
 
     def _setup_error_handlers(self):
         """Configure error handlers"""
@@ -88,6 +89,10 @@ class SilentNetManager:
             # For other screens, enforce the hierarchy
             elif self.screens[self.current_screen] > self.screens[request.path]:
                 return redirect(self.current_screen)
+            
+            elif self.screens[self.current_screen] == self.screens[request.path]:
+                # If the current screen is the same as the requested one, just return the function
+                return f(*args, **kwargs)
 
             self.previous_screen = self.current_screen
             self.current_screen = request.path
@@ -102,6 +107,8 @@ class SilentNetManager:
 
     def exit_program(self):
         """Handle application exit"""
+        if self.is_connected:
+            self.manager_socket.protocol_send(MessageParser.MANAGER_MSG_EXIT)
         self.disconnect()
         os.kill(os.getpid(), signal.SIGINT)
         return '', 204
