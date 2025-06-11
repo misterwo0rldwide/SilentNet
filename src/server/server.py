@@ -107,7 +107,7 @@ class SilentNetServer:
     def _run_server(self):
         """Main server loop to accept and handle client connections"""
         try:
-            self.server_comm = server(self.safety)
+            self.server_comm = server()
             self.server_comm.set_timeout(1)
             self._accept_clients()
         finally:
@@ -283,6 +283,8 @@ class SilentNetServer:
 
 class ClientHandler:
     """Handles communication with employee clients"""
+    
+    TIMEOUT_MAX = 10
 
     def __init__(self, server : SilentNetServer, client : client , id : int):
         self.server : SilentNetServer = server
@@ -291,6 +293,9 @@ class ClientHandler:
 
         # Dictionary for repeated processes
         self.processManager : process_limit.ProcessDebouncer = process_limit.ProcessDebouncer()
+        
+        # Count the times of timeout
+        self.timeout_cnt : int = 0
 
     def process_data(self):
         """Process data received from employee client"""
@@ -301,7 +306,15 @@ class ClientHandler:
                 data = self.client.protocol_recv(MessageParser.PROTOCOL_DATA_INDEX, decrypt=False, decompress=False)
                 
                 if data == b'ERR':
-                    continue
+                    self.timeout_cnt += 1
+                    
+                    # Client is offline
+                    if self.timeout_cnt > self.TIMEOUT_MAX:
+                        break
+                    else:
+                        continue
+                else:
+                    self.timeout_cnt = 0
                 
                 if data == b'' or len(data) != 2:
                     break
