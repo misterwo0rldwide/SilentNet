@@ -112,17 +112,18 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
   // Only process online CPUs (or just limit to first few CPUs if
   // for_each_online_cpu isn't available)
   for (cpu_core = 0; cpu_core < min(4, num_present_cpus()); cpu_core++) {
-    if (!cpu_online(cpu_core))
-	    printk(KERN_INFO "I'm offline %d\n", cpu_core);
-
-    idle_time = get_cpu_idle(cpu_core);
-    actv_time = get_cpu_active(cpu_core);
+    if (cpu_online(cpu_core)) {
+        idle_time = get_cpu_idle(cpu_core);
+        actv_time = get_cpu_active(cpu_core);
+    } else {
+        idle_time = 0;
+        actv_time = 0;
+    }
 
     if (first_run) {
-      // Initialize the arrays with the current CPU times on the first run
-      cpu_idle_time[cpu_core] = idle_time;
-      cpu_actv_time[cpu_core] = actv_time;
-      continue;
+        cpu_idle_time[cpu_core] = idle_time;
+        cpu_actv_time[cpu_core] = actv_time;
+        continue;  // Don't append anything on first run
     }
 
     idle_delta = idle_time - cpu_idle_time[cpu_core];
@@ -131,11 +132,10 @@ static int handler_pre_calc_global_load(struct kprobe *kp,
     cpu_idle_time[cpu_core] = idle_time;
     cpu_actv_time[cpu_core] = actv_time;
 
-    // Check if CPU did work
     if (!actv_delta)
-      continue;
-
-    cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
+        cpu_usage = 0;
+    else
+        cpu_usage = CALC_CPU_LOAD(actv_delta, idle_delta);
 
     // Check if we have space left and append directly with length tracking
     if (msg_len < sizeof(cpu_load_msg) - 20) {
